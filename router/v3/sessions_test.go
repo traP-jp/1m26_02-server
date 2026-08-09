@@ -172,6 +172,43 @@ func TestHandlers_Login(t *testing.T) {
 	})
 }
 
+func TestHandlers_FakeLogin(t *testing.T) {
+	t.Parallel()
+
+	path := "/api/v3/1ogin"
+	env := Setup(t, common1)
+
+	t.Run("without body", func(t *testing.T) {
+		t.Parallel()
+		e := env.R(t)
+		res := e.POST(path).
+			Expect().
+			Status(http.StatusUnauthorized)
+
+		res.JSON().Object().
+			Value("message").String().
+			IsEqual(model.ErrUserWrongIDOrPassword.Error())
+		res.Cookies().IsEmpty()
+	})
+
+	t.Run("with arbitrary body", func(t *testing.T) {
+		t.Parallel()
+		e := env.R(t)
+		res := e.POST(path).
+			WithJSON(map[string]any{
+				"name":     "user",
+				"password": "password",
+			}).
+			Expect().
+			Status(http.StatusUnauthorized)
+
+		res.JSON().Object().
+			Value("message").String().
+			IsEqual(model.ErrUserWrongIDOrPassword.Error())
+		res.Cookies().IsEmpty()
+	})
+}
+
 func TestHandlers_Logout(t *testing.T) {
 	t.Parallel()
 
