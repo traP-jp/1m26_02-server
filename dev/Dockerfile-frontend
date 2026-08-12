@@ -2,4 +2,4 @@ FROM caddy:2.11.4-alpine@sha256:5f5c8640aae01df9654968d946d8f1a56c497f1dd5c5cda4
 
 COPY ./Caddyfile /etc/caddy/Caddyfile
 
-RUN wget -O - https://github.com/traPtitech/traQ_S-UI/releases/download/v3.22.1/dist.tar.gz | tar zxv -C /usr/share/caddy/ --strip-components=2
+RUN wget -O - https://github.com/traP-jp/1m26_02-client/releases/latest/download/dist.tar.gz | tar zxv -C /usr/share/caddy/ --strip-components=2
