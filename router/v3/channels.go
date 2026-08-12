@@ -26,6 +26,8 @@ import (
 // GetChannels GET /channels
 func (h *Handlers) GetChannels(c *echo.Context) error {
 	ctx := c.Request().Context()
+	userID := getRequestUserID(c)
+
 	if isTrue(c.QueryParam("include-dm")) && len(c.QueryParam("path")) > 0 {
 		return herror.BadRequest("include-dm and path cannot be specified at the same time")
 	}
@@ -40,16 +42,26 @@ func (h *Handlers) GetChannels(c *echo.Context) error {
 			}
 			return herror.InternalServerError(err)
 		}
+		raw := h.ChannelManager.PublicChannelTree(ctx).GetChildrenIDs(targetChannel.ID)
+		childrenId := []uuid.UUID{}
+		for _, id := range raw {
+			ch, err := h.ChannelManager.GetChannel(c.Request().Context(), id)
+			if err == nil {
+				if ch.IsPublic && ch.CreatorID == userID {
+					childrenId = append(childrenId, id)
+				}
+			}
+		}
+
 		res = map[string]any{
 			"public": []*Channel{
-				formatChannel(targetChannel, h.ChannelManager.PublicChannelTree(ctx).GetChildrenIDs(targetChannel.ID)),
+				formatChannel(targetChannel, childrenId),
 			},
 		}
 		return extension.ServeJSONWithETag(c, res)
 	}
-
 	res = map[string]any{
-		"public": h.ChannelManager.PublicChannelTree(ctx),
+		"public": h.ChannelManager.AccessibleChannelTree(ctx, userID),
 	}
 	if isTrue(c.QueryParam("include-dm")) {
 		mapping, err := h.ChannelManager.GetDMChannelMapping(ctx, getRequestUserID(c))
@@ -64,6 +76,13 @@ func (h *Handlers) GetChannels(c *echo.Context) error {
 // PostChannelRequest POST /channels リクエストボディ
 type PostChannelRequest struct {
 	Name   string                 `json:"name"`
+	Parent optional.Of[uuid.UUID] `json:"parent"`
+}
+
+// PostPrivateChannelRequest POST /privatechannels リクエストボディ
+type PostPrivateChannelRequest struct {
+	Name   string                 `json:"name"`
+	User   uuid.UUID              `json:"user"`
 	Parent optional.Of[uuid.UUID] `json:"parent"`
 }
 
@@ -86,6 +105,37 @@ func (h *Handlers) CreateChannels(c *echo.Context) error {
 	ch, err := h.ChannelManager.CreatePublicChannel(ctx, req.Name, req.Parent.V, userID)
 	if err != nil {
 		switch err {
+		case channel.ErrChannelArchived:
+			return herror.BadRequest("parent channel has been archived")
+		case channel.ErrInvalidChannelName:
+			return herror.BadRequest("invalid channel name")
+		case channel.ErrInvalidParentChannel:
+			return herror.BadRequest("invalid parent channel")
+		case channel.ErrTooDeepChannel:
+			return herror.BadRequest("channel depth limit exceeded")
+		case channel.ErrChannelNameConflicts:
+			return herror.Conflict("channel name conflicts")
+		default:
+			return herror.InternalServerError(err)
+		}
+	}
+
+	return c.JSON(http.StatusCreated, formatChannel(ch, make([]uuid.UUID, 0)))
+}
+
+func (h *Handlers) CreatePrivateChannels(c *echo.Context) error {
+	ctx := c.Request().Context()
+
+	var req PostPrivateChannelRequest
+	if err := bindAndValidate(c, &req); err != nil {
+		return err
+	}
+
+	ch, err := h.ChannelManager.CreatePublicChannel(ctx, req.Name, req.Parent.V, req.User)
+	if err != nil {
+		switch err {
+		case channel.ErrInvalidPrivateUser:
+			return herror.BadRequest("invalid private user")
 		case channel.ErrChannelArchived:
 			return herror.BadRequest("parent channel has been archived")
 		case channel.ErrInvalidChannelName:

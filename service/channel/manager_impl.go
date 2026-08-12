@@ -336,6 +336,46 @@ func (m *managerImpl) PublicChannelTree(_ context.Context) Tree {
 	return m.T
 }
 
+func (m *managerImpl) AccessibleChannelTree(_ context.Context, user uuid.UUID) Tree {
+	keep := map[uuid.UUID]struct{}{}
+
+	var visit func(uuid.UUID)
+	visit = func(id uuid.UUID) {
+		ch, err := m.T.GetModel(id)
+		if err != nil {
+			return
+		}
+		if ch.IsPublic && ch.CreatorID == user {
+			keep[id] = struct{}{}
+			for _, childID := range m.T.GetChildrenIDs(id) {
+				visit(childID)
+			}
+			return
+		}
+		for _, childID := range m.T.GetChildrenIDs(id) {
+			visit(childID)
+		}
+	}
+
+	for _, rootID := range m.T.GetChildrenIDs(uuid.Nil) {
+		visit(rootID)
+	}
+
+	channels := make([]*model.Channel, 0, len(keep))
+	for id := range keep {
+		ch, err := m.T.GetModel(id)
+		if err == nil {
+			channels = append(channels, ch)
+		}
+	}
+
+	tree, err := makeChannelTree(channels)
+	if err != nil {
+		return m.PublicChannelTree(context.Background())
+	}
+	return tree
+}
+
 func (m *managerImpl) ChangeChannelSubscriptions(ctx context.Context, channelID uuid.UUID, subscriptions map[uuid.UUID]model.ChannelSubscribeLevel, keepOffLevel bool, updaterID uuid.UUID) error {
 	if !m.IsPublicChannel(ctx, channelID) {
 		return ErrInvalidChannel
