@@ -364,14 +364,19 @@ func (m *managerImpl) AccessibleChannelTree(_ context.Context, user uuid.UUID) T
 	channels := make([]*model.Channel, 0, len(keep))
 	for id := range keep {
 		ch, err := m.T.GetModel(id)
-		if err == nil {
-			channels = append(channels, ch)
+		if err != nil {
+			continue
 		}
+		_, ok := keep[ch.ParentID]
+		if !ok {
+			ch.ParentID = uuid.Nil
+		}
+		channels = append(channels, ch)
 	}
 
 	tree, err := makeChannelTree(channels)
 	if err != nil {
-		return m.PublicChannelTree(context.Background())
+		return nil
 	}
 	return tree
 }

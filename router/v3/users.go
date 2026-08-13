@@ -83,7 +83,14 @@ func (h *Handlers) CreateUser(c *echo.Context) error {
 			return herror.InternalServerError(err)
 		}
 	}
-
+	root, err := h.ChannelManager.CreatePublicChannel(c.Request().Context(), req.Name, uuid.Nil, uuid.Nil)
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+	_, err = h.ChannelManager.CreatePublicChannel(c.Request().Context(), "general", root.ID, user.GetID())
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
 	return c.JSON(http.StatusCreated, formatUserDetail(user, []model.UserTag{}, []uuid.UUID{}))
 }
 

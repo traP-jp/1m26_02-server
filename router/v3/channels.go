@@ -42,7 +42,7 @@ func (h *Handlers) GetChannels(c *echo.Context) error {
 			}
 			return herror.InternalServerError(err)
 		}
-		raw := h.ChannelManager.PublicChannelTree(ctx).GetChildrenIDs(targetChannel.ID)
+		raw := h.ChannelManager.AccessibleChannelTree(ctx, userID).GetChildrenIDs(targetChannel.ID)
 		childrenId := []uuid.UUID{}
 		for _, id := range raw {
 			ch, err := h.ChannelManager.GetChannel(c.Request().Context(), id)
