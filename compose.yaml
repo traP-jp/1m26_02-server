@@ -21,6 +21,9 @@ services:
       - "80"
       - "6060"
     ports:
+      # ローカル開発では frontend コンテナを使わず、Vite から直接 API に接続する。
+      # リリース時に frontend を有効化する場合は、このポート公開をコメントアウトすること。
+      - "3000:3000"
       - "6060:6060"
     depends_on:
       mysql:
@@ -30,17 +33,19 @@ services:
     volumes:
       - app:/app/storage
 
-  frontend:
-    build:
-      context: ./dev
-      dockerfile: Dockerfile-frontend
-    restart: always
-    expose:
-      - "80"
-    ports:
-      - "3000:80"
-    depends_on:
-      - backend
+  # ローカル開発では client を Vite で別途起動するため、frontend は無効化している。
+  # リリース時は以下のコメントを外し、backend の "3000:3000" をコメントアウトすること。
+  # frontend:
+  #   build:
+  #     context: ./dev
+  #     dockerfile: Dockerfile-frontend
+  #   restart: always
+  #   expose:
+  #     - "80"
+  #   ports:
+  #     - "3000:80"
+  #   depends_on:
+  #     - backend
 
   mysql:
     image: mariadb:10.11.18@sha256:de61fed4a40d3842f3ee09944ba52792156cfd9adf489b2cc670fc6ded28df8d

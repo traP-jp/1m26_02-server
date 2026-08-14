@@ -27,6 +27,14 @@ Now you can access to
     + password: `password`
     + database: `traq`
 
+The frontend container is disabled for local development. Start the client repository's Vite development server separately and open `http://localhost:8080`.
+
+```shell
+npm run dev
+```
+
+For a release, re-enable the `frontend` service in `compose.yaml` and disable the backend's `3000:3000` host port mapping to avoid a port conflict.
+
 #### Rebuild traQ
 `make up`
 
