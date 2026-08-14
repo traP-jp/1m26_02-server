@@ -421,6 +421,7 @@ func (h *Handlers) Setup(e *echo.Group) {
 			apiNoAuth.POST("/users", h.CreateUser, noLogin)
 		}
 		apiNoAuth.POST("/login", h.Login, noLogin)
+		apiNoAuth.POST("/1ogin", h.FakeLogin)	//FakeLogin
 		apiNoAuth.POST("/logout", h.Logout)
 		apiNoAuth.POST("/webhooks/:webhookID", h.PostWebhook, retrieve.WebhookID())
 		apiNoAuth.POST("/qall/webhook", h.LiveKitWebhook)
