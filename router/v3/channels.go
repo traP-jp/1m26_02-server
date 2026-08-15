@@ -25,8 +25,9 @@ import (
 
 // GetChannels GET /channels
 func (h *Handlers) GetChannels(c *echo.Context) error {
+
 	ctx := c.Request().Context()
-	userID := getRequestUserID(c)
+	userId := getRequestUserID(c)
 
 	if isTrue(c.QueryParam("include-dm")) && len(c.QueryParam("path")) > 0 {
 		return herror.BadRequest("include-dm and path cannot be specified at the same time")
@@ -35,19 +36,23 @@ func (h *Handlers) GetChannels(c *echo.Context) error {
 	var res map[string]any
 
 	if channelPath := c.QueryParam("path"); channelPath != "" {
-		targetChannel, err := h.ChannelManager.GetChannelFromPath(ctx, channelPath)
+		user, err := h.Repo.GetUser(c.Request().Context(), userId, false)
+		if err != nil {
+			return herror.InternalServerError(err)
+		}
+		targetChannel, err := h.ChannelManager.GetChannelFromPath(ctx, user.GetName()+"/"+channelPath)
 		if err != nil {
 			if errors.Is(err, channel.ErrInvalidChannelPath) {
 				return herror.HTTPError(http.StatusNotFound, err)
 			}
 			return herror.InternalServerError(err)
 		}
-		raw := h.ChannelManager.AccessibleChannelTree(ctx, userID).GetChildrenIDs(targetChannel.ID)
+		raw := h.ChannelManager.AccessibleChannelTree(ctx, userId).GetChildrenIDs(targetChannel.ID)
 		childrenId := []uuid.UUID{}
 		for _, id := range raw {
 			ch, err := h.ChannelManager.GetChannel(c.Request().Context(), id)
 			if err == nil {
-				if ch.IsPublic && ch.CreatorID == userID {
+				if ch.IsPublic && ch.CreatorID == userId {
 					childrenId = append(childrenId, id)
 				}
 			}
@@ -61,7 +66,7 @@ func (h *Handlers) GetChannels(c *echo.Context) error {
 		return extension.ServeJSONWithETag(c, res)
 	}
 	res = map[string]any{
-		"public": h.ChannelManager.AccessibleChannelTree(ctx, userID),
+		"public": h.ChannelManager.AccessibleChannelTree(ctx, userId),
 	}
 	if isTrue(c.QueryParam("include-dm")) {
 		mapping, err := h.ChannelManager.GetDMChannelMapping(ctx, getRequestUserID(c))
@@ -474,6 +479,9 @@ func (h *Handlers) GetChannelPath(c *echo.Context) error {
 	channelID := getParamAsUUID(c, consts.ParamChannelID)
 
 	channelPath := h.ChannelManager.GetChannelPathFromID(ctx, channelID)
+	if i := strings.Index(channelPath, "/"); i != -1 {
+		channelPath = channelPath[i+1:]
+	}
 
 	return c.JSON(http.StatusOK, map[string]any{"path": channelPath})
 }
