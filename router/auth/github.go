@@ -71,15 +71,15 @@ func (u *githubUserInfo) GetRawName() string {
 }
 
 func (u *githubUserInfo) GetName() string {
-	if s := utf8string.NewString(u.name); s.RuneCount() > 32 {
-		return s.Slice(0, 32)
+	if s := utf8string.NewString(u.name); s.RuneCount() > 20 {
+		return s.Slice(0, 20)
 	}
 	return u.name
 }
 
 func (u *githubUserInfo) GetDisplayName() string {
-	if s := utf8string.NewString(u.displayName); s.RuneCount() > 32 {
-		return s.Slice(0, 32)
+	if s := utf8string.NewString(u.displayName); s.RuneCount() > 20 {
+		return s.Slice(0, 20)
 	}
 	return u.displayName
 }

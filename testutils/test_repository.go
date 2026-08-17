@@ -1290,8 +1290,8 @@ func (repo *TestRepository) IsFileAccessible(_ context.Context, fileID, userID u
 }
 
 func (repo *TestRepository) CreateWebhook(_ context.Context, name, description string, channelID, iconFileID, creatorID uuid.UUID, secret string) (model.Webhook, error) {
-	if len(name) == 0 || utf8.RuneCountInString(name) > 32 {
-		return nil, repository.ArgError("name", "Name must be non-empty and shorter than 33 characters")
+	if len(name) == 0 || utf8.RuneCountInString(name) > 20 {
+		return nil, repository.ArgError("name", "Name must be non-empty and shorter than 21 characters")
 	}
 	uid := uuid.Must(uuid.NewV7())
 	bid := uuid.Must(uuid.NewV7())
@@ -1381,8 +1381,8 @@ func (repo *TestRepository) UpdateWebhook(_ context.Context, id uuid.UUID, args 
 		wb.UpdatedAt = time.Now()
 	}
 	if args.Name.Valid {
-		if len(args.Name.V) == 0 || utf8.RuneCountInString(args.Name.V) > 32 {
-			return repository.ArgError("args.Name", "Name must be non-empty and shorter than 33 characters")
+		if len(args.Name.V) == 0 || utf8.RuneCountInString(args.Name.V) > 20 {
+			return repository.ArgError("args.Name", "Name must be non-empty and shorter than 21 characters")
 		}
 		u.DisplayName = args.Name.V
 		u.UpdatedAt = time.Now()

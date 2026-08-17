@@ -80,21 +80,6 @@ func (mr *MockManagerMockRecorder) ChangeChannelSubscriptions(ctx, channelID, su
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeChannelSubscriptions", reflect.TypeOf((*MockManager)(nil).ChangeChannelSubscriptions), ctx, channelID, subscriptions, keepOffLevel, updaterID)
 }
 
-// CreatePrivateChannel mocks base method.
-func (m *MockManager) CreatePrivateChannel(ctx context.Context, name string, parent, creatorID, user uuid.UUID) (*model.Channel, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreatePrivateChannel", ctx, name, parent, creatorID, user)
-	ret0, _ := ret[0].(*model.Channel)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// CreatePrivateChannel indicates an expected call of CreatePrivateChannel.
-func (mr *MockManagerMockRecorder) CreatePrivateChannel(ctx, name, parent, creatorID, user interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePrivateChannel", reflect.TypeOf((*MockManager)(nil).CreatePrivateChannel), ctx, name, parent, creatorID, user)
-}
-
 // CreatePublicChannel mocks base method.
 func (m *MockManager) CreatePublicChannel(ctx context.Context, name string, parent, creatorID uuid.UUID) (*model.Channel, error) {
 	m.ctrl.T.Helper()

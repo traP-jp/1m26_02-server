@@ -13,7 +13,7 @@ func v32() *gormigrate.Migration {
 	return &gormigrate.Migration{
 		ID: "32",
 		Migrate: func(db *gorm.DB) error {
-			if err := db.Exec("UPDATE `users` SET `display_name` = LEFT(`display_name`, 32) WHERE CHAR_LENGTH(`display_name`) > 32").Error; err != nil {
+			if err := db.Exec("UPDATE `users` SET `display_name` = LEFT(`display_name`, 20) WHERE CHAR_LENGTH(`display_name`) > 20").Error; err != nil {
 				return err
 			}
 			return db.AutoMigrate(&v32User{})
