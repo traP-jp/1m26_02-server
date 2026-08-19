@@ -717,9 +717,14 @@ func channelHandler(ns *Service, ev hub.Message, eventType string) {
 			ns.logger.Error("private channel event not defined", zap.Stringer("cid", cid))
 		}
 	} else {
+		ch, err := ns.repo.GetChannel(context.Background(), cid)
+		if err != nil {
+			return
+		}
+		user := ch.CreatorID
 		go ns.ws.WriteMessage(eventType, map[string]interface{}{
 			"id": cid,
-		}, ws.TargetAll())
+		}, ws.TargetUsers(user))
 	}
 }
 

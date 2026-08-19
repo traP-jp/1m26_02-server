@@ -38,6 +38,20 @@ func (m *MockManager) EXPECT() *MockManagerMockRecorder {
 	return m.recorder
 }
 
+// AccessibleChannelTree mocks base method.
+func (m *MockManager) AccessibleChannelTree(arg0 context.Context, user uuid.UUID) channel.Tree {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "AccessibleChannelTree", arg0, user)
+	ret0, _ := ret[0].(channel.Tree)
+	return ret0
+}
+
+// AccessibleChannelTree indicates an expected call of AccessibleChannelTree.
+func (mr *MockManagerMockRecorder) AccessibleChannelTree(arg0, user interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "AccessibleChannelTree", reflect.TypeOf((*MockManager)(nil).AccessibleChannelTree), arg0, user)
+}
+
 // ArchiveChannel mocks base method.
 func (m *MockManager) ArchiveChannel(ctx context.Context, id, updaterID uuid.UUID) error {
 	m.ctrl.T.Helper()

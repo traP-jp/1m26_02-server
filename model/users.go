@@ -112,7 +112,7 @@ func (user *User) TableName() string {
 func (user User) Validate() error {
 	return vd.ValidateStruct(&user,
 		vd.Field(&user.Name, validator.UserNameRuleRequired...),
-		vd.Field(&user.DisplayName, vd.RuneLength(0, 32)),
+		vd.Field(&user.DisplayName, vd.RuneLength(0, 20)),
 		vd.Field(&user.Password, vd.Required, vd.RuneLength(128, 128)),
 		vd.Field(&user.Salt, vd.Required, vd.RuneLength(128, 128)),
 		vd.Field(&user.Role, vd.Required, vd.RuneLength(1, 30)),

@@ -17,8 +17,8 @@ import (
 
 // CreateWebhook implements WebhookRepository interface.
 func (repo *Repository) CreateWebhook(ctx context.Context, name, description string, channelID, iconFileID, creatorID uuid.UUID, secret string) (model.Webhook, error) {
-	if len(name) == 0 || utf8.RuneCountInString(name) > 32 {
-		return nil, repository.ArgError("name", "Name must be non-empty and shorter than 33 characters")
+	if len(name) == 0 || utf8.RuneCountInString(name) > 20 {
+		return nil, repository.ArgError("name", "Name must be non-empty and shorter than 21 characters")
 	}
 
 	uid := uuid.Must(uuid.NewV7())
@@ -143,8 +143,8 @@ func (repo *Repository) UpdateWebhook(ctx context.Context, id uuid.UUID, args re
 		}
 
 		if args.Name.Valid {
-			if len(args.Name.V) == 0 || utf8.RuneCountInString(args.Name.V) > 32 {
-				return repository.ArgError("args.Name", "Name must be non-empty and shorter than 33 characters")
+			if len(args.Name.V) == 0 || utf8.RuneCountInString(args.Name.V) > 20 {
+				return repository.ArgError("args.Name", "Name must be non-empty and shorter than 21 characters")
 			}
 
 			if err := tx.Model(&model.User{ID: w.BotUserID}).Update("display_name", args.Name.V).Error; err != nil {

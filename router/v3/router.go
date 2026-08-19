@@ -195,6 +195,7 @@ func (h *Handlers) Setup(e *echo.Group) {
 		{
 			apiChannels.GET("", h.GetChannels, requires(permission.GetChannel))
 			apiChannels.POST("", h.CreateChannels, requires(permission.CreateChannel))
+			//apiChannels.POST("/private", h.CreatePrivateChannels, requires(permission.CreateChannel))
 			apiChannelsCID := apiChannels.Group("/:channelID", retrieve.ChannelID(), requiresChannelAccessPerm)
 			{
 				apiChannelsCID.GET("", h.GetChannel, requires(permission.GetChannel))

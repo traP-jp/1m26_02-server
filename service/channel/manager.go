@@ -14,6 +14,7 @@ import (
 var (
 	ErrChannelNotFound      = errors.New("channel not found")
 	ErrChannelNameConflicts = errors.New("channel name conflicts")
+	ErrInvalidPrivateUser   = errors.New("private user is invalid")
 	ErrInvalidChannelName   = errors.New("invalid channel name")
 	ErrInvalidChannelPath   = errors.New("invalid channel path")
 	ErrInvalidParentChannel = errors.New("invalid parent channel")
@@ -30,6 +31,7 @@ type Manager interface {
 	CreatePublicChannel(ctx context.Context, name string, parent, creatorID uuid.UUID) (*model.Channel, error)
 	UpdateChannel(ctx context.Context, id uuid.UUID, args repository.UpdateChannelArgs) error
 	PublicChannelTree(ctx context.Context) Tree
+	AccessibleChannelTree(_ context.Context, user uuid.UUID) Tree
 
 	ChangeChannelSubscriptions(ctx context.Context, channelID uuid.UUID, subscriptions map[uuid.UUID]model.ChannelSubscribeLevel, keepOffLevel bool, updaterID uuid.UUID) error
 
