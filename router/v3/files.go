@@ -117,7 +117,7 @@ func (h *Handlers) PostFile(c *echo.Context) error {
 		return herror.InternalServerError(err)
 	}
 	if ch.IsArchived() {
-		return herror.BadRequest(fmt.Sprintf("channel #%s has been archived", h.ChannelManager.PublicChannelTree(ctx).GetChannelPath(ch.ID)))
+		return herror.BadRequest(fmt.Sprintf("channel #%s has been archived", h.ChannelManager.AccessibleChannelTree(ctx, userID).GetChannelPath(ch.ID)))
 	}
 	if !ch.IsPublic {
 		// アクセスコントロール設定

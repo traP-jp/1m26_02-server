@@ -163,7 +163,8 @@ func (h *Handlers) CreatePrivateChannels(c *echo.Context) error {
 func (h *Handlers) GetChannel(c *echo.Context) error {
 	ctx := c.Request().Context()
 	ch := getParamChannel(c)
-	return c.JSON(http.StatusOK, formatChannel(ch, h.ChannelManager.PublicChannelTree(ctx).GetChildrenIDs(ch.ID)))
+	userID := getRequestUserID(c)
+	return c.JSON(http.StatusOK, formatChannel(ch, h.ChannelManager.AccessibleChannelTree(ctx, userID).GetChildrenIDs(ch.ID)))
 }
 
 // PatchChannelRequest PATCH /channels/:channelID リクエストボディ
