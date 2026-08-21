@@ -3,6 +3,7 @@ package channel
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -493,4 +494,32 @@ func (m *managerImpl) recordChannelEvent(channelID uuid.UUID, eventType model.Ch
 			m.L.Warn("failed to record channel event", zap.Error(err), zap.Stringer("channelID", channelID), zap.Stringer("type", eventType), zap.Any("detail", detail), zap.Time("datetime", datetime))
 		}
 	}()
+}
+
+func (m *managerImpl) CreateLightsOutChannel(ctx context.Context, rootChannelID, userID uuid.UUID, depth int) {
+	if depth <= 0 {
+		return
+	}
+	childCount := rand.Intn(3) + 1
+	names := []string{"dev", "test", "hoge", "huga", "sample", "apple", "banana", "god", "piyo", "times", "add", "sub", "get"}
+	rand.Shuffle(len(names), func(i, j int) { names[i], names[j] = names[j], names[i] })
+	for i := range childCount {
+		ch, err := m.CreatePublicChannel(ctx, names[i], rootChannelID, userID)
+		if err == nil {
+			m.CreateLightsOutChannel(ctx, ch.ID, userID, depth-1)
+		}
+	}
+}
+
+func (m *managerImpl) DeleteLightsOutChannel(ctx context.Context, rootChannelID, userID uuid.UUID) {
+	childs := m.T.getChildrenIDs(rootChannelID)
+	for _, childId := range childs {
+		m.UpdateChannel(ctx, childId,
+			repository.UpdateChannelArgs{
+				Name: optional.From(random.AlphaNumeric(20)),
+			},
+		)
+		m.ArchiveChannel(ctx, childId, userID)
+		m.DeleteLightsOutChannel(ctx, childId, userID)
+	}
 }

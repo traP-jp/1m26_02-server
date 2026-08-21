@@ -91,6 +91,11 @@ func (h *Handlers) CreateUser(c *echo.Context) error {
 	if err != nil {
 		return herror.InternalServerError(err)
 	}
+	_, err = h.ChannelManager.CreatePublicChannel(c.Request().Context(), "LightsOut", root.ID, user.GetID())
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+
 	return c.JSON(http.StatusCreated, formatUserDetail(user, []model.UserTag{}, []uuid.UUID{}))
 }
 

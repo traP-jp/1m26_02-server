@@ -80,6 +80,18 @@ func (mr *MockManagerMockRecorder) ChangeChannelSubscriptions(ctx, channelID, su
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ChangeChannelSubscriptions", reflect.TypeOf((*MockManager)(nil).ChangeChannelSubscriptions), ctx, channelID, subscriptions, keepOffLevel, updaterID)
 }
 
+// CreateLightsOutChannel mocks base method.
+func (m *MockManager) CreateLightsOutChannel(ctx context.Context, rootChannelID, userID uuid.UUID, depth int) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "CreateLightsOutChannel", ctx, rootChannelID, userID, depth)
+}
+
+// CreateLightsOutChannel indicates an expected call of CreateLightsOutChannel.
+func (mr *MockManagerMockRecorder) CreateLightsOutChannel(ctx, rootChannelID, userID, depth interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateLightsOutChannel", reflect.TypeOf((*MockManager)(nil).CreateLightsOutChannel), ctx, rootChannelID, userID, depth)
+}
+
 // CreatePublicChannel mocks base method.
 func (m *MockManager) CreatePublicChannel(ctx context.Context, name string, parent, creatorID uuid.UUID) (*model.Channel, error) {
 	m.ctrl.T.Helper()
@@ -93,6 +105,18 @@ func (m *MockManager) CreatePublicChannel(ctx context.Context, name string, pare
 func (mr *MockManagerMockRecorder) CreatePublicChannel(ctx, name, parent, creatorID interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreatePublicChannel", reflect.TypeOf((*MockManager)(nil).CreatePublicChannel), ctx, name, parent, creatorID)
+}
+
+// DeleteLightsOutChannel mocks base method.
+func (m *MockManager) DeleteLightsOutChannel(ctx context.Context, rootChannelID, userID uuid.UUID) {
+	m.ctrl.T.Helper()
+	m.ctrl.Call(m, "DeleteLightsOutChannel", ctx, rootChannelID, userID)
+}
+
+// DeleteLightsOutChannel indicates an expected call of DeleteLightsOutChannel.
+func (mr *MockManagerMockRecorder) DeleteLightsOutChannel(ctx, rootChannelID, userID interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteLightsOutChannel", reflect.TypeOf((*MockManager)(nil).DeleteLightsOutChannel), ctx, rootChannelID, userID)
 }
 
 // GetChannel mocks base method.

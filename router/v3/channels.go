@@ -486,3 +486,23 @@ func (h *Handlers) GetChannelPath(c *echo.Context) error {
 
 	return c.JSON(http.StatusOK, map[string]any{"path": channelPath})
 }
+
+// GetChannelPath POT /channels/:channelID/createlightsout
+func (h *Handlers) PostCreateLightsOut(c *echo.Context) error {
+	ctx := c.Request().Context()
+	userId := getRequestUserID(c)
+	channelID := getParamAsUUID(c, consts.ParamChannelID)
+
+	h.ChannelManager.CreateLightsOutChannel(ctx, channelID, userId, 4)
+	return nil
+}
+
+// GetChannelPath POT /channels/:channelID/deletelightsout
+func (h *Handlers) PostDeleteLightsOut(c *echo.Context) error {
+	ctx := c.Request().Context()
+	userId := getRequestUserID(c)
+	channelID := getParamAsUUID(c, consts.ParamChannelID)
+
+	h.ChannelManager.DeleteLightsOutChannel(ctx, channelID, userId)
+	return nil
+}

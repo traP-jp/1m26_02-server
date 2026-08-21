@@ -213,6 +213,8 @@ func (h *Handlers) Setup(e *echo.Group) {
 				apiChannelsCID.GET("/bots", h.GetChannelBots, requires(permission.GetChannel))
 				apiChannelsCID.GET("/events", h.GetChannelEvents, requires(permission.GetChannel))
 				apiChannelsCID.GET("/path", h.GetChannelPath, requires(permission.GetChannel))
+				apiChannelsCID.POST("/createlightsout", h.PostCreateLightsOut, requires(permission.CreateChannel))
+				apiChannelsCID.POST("/deletelightsout", h.PostDeleteLightsOut, requires(permission.CreateChannel))
 			}
 		}
 		apiMessages := api.Group("/messages")
