@@ -9,6 +9,17 @@ import (
 	"github.com/traPtitech/traQ/utils/optional"
 )
 
+func TestNotInternalURL(t *testing.T) {
+	t.Parallel()
+
+	assert.NoError(t, NotInternalURL.Validate(nil))
+	assert.NoError(t, NotInternalURL.Validate(""))
+	assert.NoError(t, NotInternalURL.Validate("https://8.8.8.8/hook"))
+	assert.Error(t, NotInternalURL.Validate("http://127.0.0.1:8080"))
+	assert.Error(t, NotInternalURL.Validate("http://bot-traq:8080"))
+	assert.Error(t, NotInternalURL.Validate(optional.From("http://127.0.0.1:8080")))
+}
+
 func TestNotNilUUID(t *testing.T) {
 	t.Parallel()
 

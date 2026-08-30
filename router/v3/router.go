@@ -59,6 +59,9 @@ type Config struct {
 	Version  string
 	Revision string
 
+	// Development 開発モードかどうか
+	Development bool
+
 	// SkyWaySecretKey SkyWayクレデンシャル用シークレットキー
 	SkyWaySecretKey string
 

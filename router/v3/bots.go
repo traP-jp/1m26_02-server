@@ -48,11 +48,18 @@ type PostBotRequest struct {
 }
 
 func (r PostBotRequest) Validate() error {
+	return r.validate(false)
+}
+
+func (r PostBotRequest) validate(allowInternalEndpoint bool) error {
 	var endpointRules []vd.Rule
 	if r.Mode == model.BotModeHTTP.String() {
 		endpointRules = append(endpointRules, vd.Required)
 	}
-	endpointRules = append(endpointRules, is.URL, validator.NotInternalURL)
+	endpointRules = append(endpointRules, is.URL)
+	if !allowInternalEndpoint {
+		endpointRules = append(endpointRules, validator.NotInternalURL)
+	}
 
 	return vd.ValidateStruct(&r,
 		vd.Field(&r.Name, validator.BotUserNameRuleRequired...),
@@ -66,8 +73,11 @@ func (r PostBotRequest) Validate() error {
 // CreateBot POST /bots
 func (h *Handlers) CreateBot(c *echo.Context) error {
 	var req PostBotRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		return err
+	if err := c.Bind(&req); err != nil {
+		return herror.BadRequest(err)
+	}
+	if err := req.validate(h.Development); err != nil {
+		return herror.BadRequest(err)
 	}
 
 	iconFileID, err := file.GenerateIconFile(c.Request().Context(), h.FileManager, req.Name)
@@ -148,11 +158,19 @@ type PatchBotRequest struct {
 }
 
 func (r PatchBotRequest) ValidateWithContext(ctx context.Context) error {
+	return r.validateWithContext(ctx, false)
+}
+
+func (r PatchBotRequest) validateWithContext(ctx context.Context, allowInternalEndpoint bool) error {
+	endpointRules := []vd.Rule{is.URL}
+	if !allowInternalEndpoint {
+		endpointRules = append(endpointRules, validator.NotInternalURL)
+	}
 	return vd.ValidateStructWithContext(ctx, &r,
 		vd.Field(&r.DisplayName, validator.RequiredIfValid, vd.RuneLength(1, 20)),
 		vd.Field(&r.Description, vd.RuneLength(0, 1000)),
 		vd.Field(&r.Mode, validator.RequiredIfValid, vd.In(model.BotModeHTTP.String(), model.BotModeWebSocket.String())),
-		vd.Field(&r.Endpoint, is.URL, validator.NotInternalURL),
+		vd.Field(&r.Endpoint, endpointRules...),
 		vd.Field(&r.DeveloperID, validator.NotNilUUID, utils.IsActiveHumanUserID),
 		vd.Field(&r.SubscribeEvents, utils.IsValidBotEvents),
 		vd.Field(&r.Bio, vd.RuneLength(0, 1000)),
@@ -164,8 +182,14 @@ func (h *Handlers) EditBot(c *echo.Context) error {
 	b := getParamBot(c)
 
 	var req PatchBotRequest
-	if err := bindAndValidate(c, &req); err != nil {
-		return err
+	if err := c.Bind(&req); err != nil {
+		return herror.BadRequest(err)
+	}
+	if err := req.validateWithContext(utils.NewRequestValidateContext(c), h.Development); err != nil {
+		if internalErr, ok := err.(vd.InternalError); ok {
+			return herror.InternalServerError(internalErr.InternalError())
+		}
+		return herror.BadRequest(err)
 	}
 
 	if req.Privileged.Valid && getRequestUser(c).GetRole() != role.Admin {

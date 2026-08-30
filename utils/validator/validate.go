@@ -30,10 +30,10 @@ var NotInternalURL = vd.By(func(value interface{}) error {
 	case nil:
 		return nil
 	case string:
+		s = v
 		if len(s) == 0 {
 			return nil
 		}
-		s = v
 	case optional.Of[string]:
 		if len(v.ValueOrZero()) == 0 {
 			return nil
