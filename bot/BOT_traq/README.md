@@ -1,6 +1,39 @@
 # BOT_traq
 
-BOT謎で使用するHTTP BOT。現在は `BOT_traq` をメンションすると、同じチャンネルへ「呼びましたか？」と投稿する。
+BOT謎で使用するHTTP BOT。`BOT_traq`へのメンションに続く2単語を4×4盤面上のナイト移動で解釈し、同じチャンネルへ解釈候補を返す。
+
+## 現在の入力と応答
+
+入力はメンションの後に、有効な単語を2つ指定する。
+
+```text
+@BOT_traq <1語目> <2語目>
+```
+
+1語目のナイト移動先にあるCOMMANDと、2語目のナイト移動先にあるTARGETの直積を解釈候補とする。候補が1件なら1行で返し、複数なら箇条書きですべて返す。現在は候補の表示までを実装しており、候補からのランダム選択とコマンド実行はまだ行わない。
+
+```text
+@BOT_traq file message
+```
+
+```text
+reset BOT
+```
+
+複数候補の例:
+
+```text
+@BOT_traq BOT count
+```
+
+```text
+- count BOT
+- count stamp
+- reset BOT
+- reset stamp
+```
+
+引数が2つでない、盤面に存在しない単語がある、または有効な移動先がない場合は構文エラーを返す。盤面と全移動候補は [`docs/q_bot.md`](../../../docs/q_bot.md) を参照する。
 
 ## 使用ライブラリとイベント
 
@@ -47,7 +80,7 @@ traQ backendからBOTへはCompose内の `http://bot-traq:8080` で接続する�
 curl -i http://localhost:3003/healthz
 ```
 
-`204 No Content` が返れば起動している。traQ上で `@BOT_traq` を含むメッセージを投稿し、「呼びましたか？」と返ることを確認する。
+`204 No Content` が返れば起動している。traQ上で `@BOT_traq file message` を投稿し、`reset BOT` と返ることを確認する。
 
 自動登録の進行状況は次で確認できる。
 

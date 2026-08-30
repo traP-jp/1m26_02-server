@@ -49,14 +49,15 @@ func TestBotHandleMention(t *testing.T) {
 		Message: traqbot.MessagePayload{
 			ID:        "message-id",
 			ChannelID: "channel-id",
+			PlainText: "@BOT_traq file message",
 		},
 	})
 
 	if poster.channelID != "channel-id" {
 		t.Errorf("channelID = %q", poster.channelID)
 	}
-	if poster.content != mentionReply {
-		t.Errorf("content = %q, want %q", poster.content, mentionReply)
+	if poster.content != "reset BOT" {
+		t.Errorf("content = %q, want %q", poster.content, "reset BOT")
 	}
 }
 
@@ -82,8 +83,8 @@ func TestMentionEventRepliesToSourceChannel(t *testing.T) {
   "message": {
     "id": "message-id",
     "channelId": "channel-id",
-    "text": "@BOT_traq",
-    "plainText": "@BOT_traq"
+    "text": "@BOT_traq file message",
+    "plainText": "@BOT_traq file message"
   }
 }`
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))
@@ -102,10 +103,33 @@ func TestMentionEventRepliesToSourceChannel(t *testing.T) {
 		if posted.channelID != "channel-id" {
 			t.Errorf("channelID = %q", posted.channelID)
 		}
-		if posted.content != mentionReply {
-			t.Errorf("content = %q, want %q", posted.content, mentionReply)
+		if posted.content != "reset BOT" {
+			t.Errorf("content = %q, want %q", posted.content, "reset BOT")
 		}
 	case <-time.After(time.Second):
 		t.Fatal("timed out waiting for mention reply")
+	}
+}
+
+func TestInterpretationReply(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name      string
+		plainText string
+		want      string
+	}{
+		{name: "single", plainText: "@BOT_traq file message", want: "reset BOT"},
+		{name: "multiple", plainText: "@BOT_traq BOT count", want: "- count BOT\n- count stamp\n- reset BOT\n- reset stamp"},
+		{name: "wrong argument count", plainText: "@BOT_traq file", want: "引数を2つ指定してください。例: @BOT_traq file message"},
+		{name: "no interpretation", plainText: "@BOT_traq reset message", want: "構文エラー: ナイト移動後に有効な解釈がありません。"},
+		{name: "unknown word", plainText: "@BOT_traq unknown message", want: "構文エラー: unknown word \"unknown\""},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := interpretationReply(tt.plainText); got != tt.want {
+				t.Errorf("interpretationReply() = %q, want %q", got, tt.want)
+			}
+		})
 	}
 }

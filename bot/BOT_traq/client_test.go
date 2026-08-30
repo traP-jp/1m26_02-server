@@ -37,8 +37,8 @@ func TestTraQClientPostMessage(t *testing.T) {
 			if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
 				t.Fatalf("decode request: %v", err)
 			}
-			if body.Content != mentionReply {
-				t.Errorf("content = %q, want %q", body.Content, mentionReply)
+			if body.Content != "reset BOT" {
+				t.Errorf("content = %q, want %q", body.Content, "reset BOT")
 			}
 			return &http.Response{
 				StatusCode: http.StatusCreated,
@@ -48,7 +48,7 @@ func TestTraQClientPostMessage(t *testing.T) {
 		}),
 	}
 
-	if err := client.PostMessage(context.Background(), "channel-id", mentionReply); err != nil {
+	if err := client.PostMessage(context.Background(), "channel-id", "reset BOT"); err != nil {
 		t.Fatalf("PostMessage() error = %v", err)
 	}
 }
