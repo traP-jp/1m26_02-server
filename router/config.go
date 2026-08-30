@@ -84,6 +84,7 @@ func provideV3Config(c *Config) v3.Config {
 	return v3.Config{
 		Version:                         c.Version,
 		Revision:                        c.Revision,
+		Development:                     c.Development,
 		SkyWaySecretKey:                 c.SkyWaySecretKey,
 		LiveKitHost:                     c.LiveKitHost,
 		LiveKitAPIKey:                   c.LiveKitAPIKey,
