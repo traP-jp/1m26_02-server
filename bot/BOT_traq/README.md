@@ -35,6 +35,22 @@ reset BOT
 
 引数が2つでない、盤面に存在しない単語がある、または有効な移動先がない場合は構文エラーを返す。盤面と全移動候補は [`docs/q_bot.md`](../../../docs/q_bot.md) を参照する。
 
+## コマンド実装の構成
+
+解釈後の `COMMAND TARGET` を実行する共通基盤は `command_executor.go`、型定義は `command_types.go` に置く。COMMANDごとの処理は次のファイルに分け、各関数内で7種類のTARGETを扱う。
+
+```text
+command_count.go
+command_list.go
+command_open.go
+command_send.go
+command_delete.go
+command_reset.go
+command_debug.go
+```
+
+現在はディスパッチと入力検証だけを実装しており、各COMMAND関数は `errCommandNotImplemented` を返すスタブである。解釈候補の表示処理からはまだ呼び出さない。
+
 ## 使用ライブラリとイベント
 
 イベント受信には [traPtitech/traq-bot](https://github.com/traPtitech/traq-bot) v1.0.3を使用する。このライブラリは、traQから届くHTTPイベントの検証トークン確認とpayloadのデコードを担当する。traQへリクエストを送るAPIクライアントは含まれないため、メッセージ投稿部分はこのBOT内のHTTPクライアントで実装している。
