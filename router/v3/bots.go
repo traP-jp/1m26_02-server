@@ -63,7 +63,7 @@ func (r PostBotRequest) validate(allowInternalEndpoint bool) error {
 
 	return vd.ValidateStruct(&r,
 		vd.Field(&r.Name, validator.BotUserNameRuleRequired...),
-		vd.Field(&r.DisplayName, vd.Required, vd.RuneLength(1, 32)),
+		vd.Field(&r.DisplayName, vd.Required, vd.RuneLength(1, 20)),
 		vd.Field(&r.Description, vd.Required, vd.RuneLength(0, 1000)),
 		vd.Field(&r.Mode, vd.Required, vd.In(model.BotModeHTTP.String(), model.BotModeWebSocket.String())),
 		vd.Field(&r.Endpoint, endpointRules...),
@@ -167,7 +167,7 @@ func (r PatchBotRequest) validateWithContext(ctx context.Context, allowInternalE
 		endpointRules = append(endpointRules, validator.NotInternalURL)
 	}
 	return vd.ValidateStructWithContext(ctx, &r,
-		vd.Field(&r.DisplayName, validator.RequiredIfValid, vd.RuneLength(1, 32)),
+		vd.Field(&r.DisplayName, validator.RequiredIfValid, vd.RuneLength(1, 20)),
 		vd.Field(&r.Description, vd.RuneLength(0, 1000)),
 		vd.Field(&r.Mode, validator.RequiredIfValid, vd.In(model.BotModeHTTP.String(), model.BotModeWebSocket.String())),
 		vd.Field(&r.Endpoint, endpointRules...),

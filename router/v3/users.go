@@ -83,7 +83,14 @@ func (h *Handlers) CreateUser(c *echo.Context) error {
 			return herror.InternalServerError(err)
 		}
 	}
-
+	root, err := h.ChannelManager.CreatePublicChannel(c.Request().Context(), req.Name, uuid.Nil, uuid.Nil)
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+	_, err = h.ChannelManager.CreatePublicChannel(c.Request().Context(), "general", root.ID, user.GetID())
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
 	return c.JSON(http.StatusCreated, formatUserDetail(user, []model.UserTag{}, []uuid.UUID{}))
 }
 
@@ -146,7 +153,7 @@ type PatchMeRequest struct {
 
 func (r PatchMeRequest) ValidateWithContext(ctx context.Context) error {
 	return vd.ValidateStructWithContext(ctx, &r,
-		vd.Field(&r.DisplayName, vd.RuneLength(0, 32)),
+		vd.Field(&r.DisplayName, vd.RuneLength(0, 20)),
 		vd.Field(&r.TwitterID, validator.TwitterIDRule...),
 		vd.Field(&r.Bio, vd.RuneLength(0, 1000)),
 	)
@@ -165,7 +172,7 @@ func (h *Handlers) EditMe(c *echo.Context) error {
 	if req.HomeChannel.Valid {
 		if req.HomeChannel.V != uuid.Nil {
 			// チャンネル存在確認
-			if !h.ChannelManager.PublicChannelTree(ctx).IsChannelPresent(req.HomeChannel.V) {
+			if !h.ChannelManager.AccessibleChannelTree(ctx, userID).IsChannelPresent(req.HomeChannel.V) {
 				return herror.BadRequest("invalid homeChannel")
 			}
 		}
@@ -403,7 +410,7 @@ type PatchUserRequest struct {
 
 func (r PatchUserRequest) Validate() error {
 	return vd.ValidateStruct(&r,
-		vd.Field(&r.DisplayName, vd.RuneLength(0, 32)),
+		vd.Field(&r.DisplayName, vd.RuneLength(0, 20)),
 		vd.Field(&r.TwitterID, validator.TwitterIDRule...),
 		vd.Field(&r.Role, vd.RuneLength(0, 30)),
 		vd.Field(&r.State, vd.Min(0), vd.Max(2)),

@@ -31,7 +31,7 @@ var PasswordRuleRequired = append([]vd.Rule{
 // UserNameRule ユーザー名バリデーションルール
 var UserNameRule = []vd.Rule{
 	vd.Match(regexp.MustCompile(`^[a-zA-Z0-9_-]+$`)).Error("must contain [a-zA-Z0-9_-] only"),
-	vd.RuneLength(1, 32),
+	vd.RuneLength(1, 20),
 }
 
 // UserNameRuleRequired ユーザー名バリデーションルール with Required

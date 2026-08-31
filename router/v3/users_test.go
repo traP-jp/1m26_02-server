@@ -312,12 +312,12 @@ func TestHandlers_EditMe(t *testing.T) {
 			Status(http.StatusBadRequest)
 	})
 
-	t.Run("too long display name (more than 32 letters)", func(t *testing.T) {
+	t.Run("too long display name (more than 20 letters)", func(t *testing.T) {
 		t.Parallel()
 		e := env.R(t)
 		e.PATCH(path).
 			WithCookie(session.CookieName, s).
-			WithJSON(&PatchMeRequest{DisplayName: optional.From(strings.Repeat("a", 33))}).
+			WithJSON(&PatchMeRequest{DisplayName: optional.From(strings.Repeat("a", 21))}).
 			Expect().
 			Status(http.StatusBadRequest)
 	})
@@ -325,17 +325,17 @@ func TestHandlers_EditMe(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("success (just 32 letters)", func(t *testing.T) {
+		t.Run("success (just 20 letters)", func(t *testing.T) {
 			e := env.R(t)
 			e.PATCH(path).
 				WithCookie(session.CookieName, s).
-				WithJSON(&PatchMeRequest{DisplayName: optional.From(strings.Repeat("a", 32))}).
+				WithJSON(&PatchMeRequest{DisplayName: optional.From(strings.Repeat("a", 20))}).
 				Expect().
 				Status(http.StatusNoContent)
 
 			profile, err := env.Repository.GetUser(context.TODO(), user.GetID(), true)
 			require.NoError(t, err)
-			assert.EqualValues(t, strings.Repeat("a", 32), profile.GetDisplayName())
+			assert.EqualValues(t, strings.Repeat("a", 20), profile.GetDisplayName())
 		})
 
 		t.Run("success (shorter name)", func(t *testing.T) {
@@ -902,7 +902,7 @@ func TestPatchUserRequest_Validate(t *testing.T) {
 		},
 		{
 			"too long display name",
-			fields{DisplayName: optional.From(strings.Repeat("a", 33))},
+			fields{DisplayName: optional.From(strings.Repeat("a", 21))},
 			true,
 		},
 		{
@@ -951,7 +951,7 @@ func TestHandlers_EditUser(t *testing.T) {
 		e := env.R(t)
 		e.PATCH(path, user.GetID()).
 			WithCookie(session.CookieName, adminSession).
-			WithJSON(&PatchUserRequest{DisplayName: optional.From(strings.Repeat("a", 33))}).
+			WithJSON(&PatchUserRequest{DisplayName: optional.From(strings.Repeat("a", 21))}).
 			Expect().
 			Status(http.StatusBadRequest)
 	})

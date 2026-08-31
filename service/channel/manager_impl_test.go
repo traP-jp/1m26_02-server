@@ -104,6 +104,40 @@ func TestInitChannelManager(t *testing.T) {
 	})
 }
 
+func TestManagerImpl_AccessibleChannelTree(t *testing.T) {
+	t.Parallel()
+	ctrl := gomock.NewController(t)
+	repo := mock_repository.NewMockChannelRepository(ctrl)
+	cm := initCM(t, repo)
+
+	userID := uuid.Must(uuid.NewV7())
+	userRoot := uuid.Must(uuid.NewV7())
+	otherPublicRoot := uuid.Must(uuid.NewV7())
+	privateMine := uuid.Must(uuid.NewV7())
+	privateOther := uuid.Must(uuid.NewV7())
+	publicChildOfPrivateOther := uuid.Must(uuid.NewV7())
+	privateChildOfMine := uuid.Must(uuid.NewV7())
+
+	cm.T, _ = makeChannelTree([]*model.Channel{
+		{ID: userRoot, Name: "user-root", ParentID: uuid.Nil, Topic: "", IsForced: false, IsPublic: true, IsVisible: true, CreatorID: uuid.Nil},
+		{ID: otherPublicRoot, Name: "other-public-root", ParentID: uuid.Nil, Topic: "", IsForced: false, IsPublic: true, IsVisible: true, CreatorID: uuid.Nil},
+		{ID: privateMine, Name: "private-mine", ParentID: uuid.Nil, Topic: "", IsForced: false, IsPublic: false, IsVisible: true, CreatorID: userID},
+		{ID: privateOther, Name: "private-other", ParentID: uuid.Nil, Topic: "", IsForced: false, IsPublic: false, IsVisible: true, CreatorID: uuid.Must(uuid.NewV7())},
+		{ID: publicChildOfPrivateOther, Name: "public-child", ParentID: privateOther, Topic: "", IsForced: false, IsPublic: true, IsVisible: true, CreatorID: uuid.Must(uuid.NewV7())},
+		{ID: privateChildOfMine, Name: "private-child", ParentID: privateMine, Topic: "", IsForced: false, IsPublic: false, IsVisible: true, CreatorID: userID},
+	})
+
+	tree := cm.AccessibleChannelTree(context.TODO(), userID)
+
+	assert.False(t, tree.IsChannelPresent(userRoot))
+	assert.True(t, tree.IsChannelPresent(privateMine))
+	assert.True(t, tree.IsChannelPresent(privateChildOfMine))
+	assert.False(t, tree.IsChannelPresent(otherPublicRoot))
+	assert.False(t, tree.IsChannelPresent(publicChildOfPrivateOther))
+	assert.False(t, tree.IsChannelPresent(privateOther))
+	assert.False(t, tree.IsChannelPresent(uuid.Must(uuid.NewV7())))
+}
+
 func TestManagerImpl_GetChannel(t *testing.T) {
 	t.Parallel()
 
