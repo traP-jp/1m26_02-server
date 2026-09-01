@@ -7,6 +7,8 @@ import (
 	"net/http"
 	"strings"
 	"testing"
+
+	traqbot "github.com/traPtitech/traq-bot"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -50,5 +52,35 @@ func TestTraQClientPostMessage(t *testing.T) {
 
 	if err := client.PostMessage(context.Background(), "channel-id", "reset BOT"); err != nil {
 		t.Fatalf("PostMessage() error = %v", err)
+	}
+}
+
+func TestTraQClientExecuteQBotCommand(t *testing.T) {
+	t.Parallel()
+	client := newTraQClient("https://q.example.com/api/v3", "access-token")
+	client.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodPost || r.URL.Path != "/api/v3/qbot/commands" {
+			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
+		}
+		var body map[string]string
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			t.Fatal(err)
+		}
+		if body["command"] != "open" || body["target"] != "user" || body["userId"] != "user-id" || body["messageId"] != "message-id" || body["channelId"] != "channel-id" {
+			t.Fatalf("body = %#v", body)
+		}
+		return testResponse(http.StatusOK, `{"reply":"対象を開いています…","sendContent":""}`), nil
+	})}
+
+	result, err := client.ExecuteQBotCommand(context.Background(), commandRequest{
+		Command: commandOpen,
+		Target:  targetUser,
+		Message: traqbot.MessagePayload{ID: "message-id", ChannelID: "channel-id", User: traqbot.UserPayload{ID: "user-id"}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if result.Reply != "対象を開いています…" {
+		t.Fatalf("result = %#v", result)
 	}
 }

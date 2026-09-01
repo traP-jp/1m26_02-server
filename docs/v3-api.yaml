@@ -26,6 +26,44 @@ x-traq-codegen-schemas:
     QallSoundboardItemDeletedEvent:
       $ref: "#/components/schemas/QallSoundboardItemDeletedEvent"
 paths:
+  "/qbot/state":
+    get:
+      summary: BOT謎の自分の状態を取得
+      description: クリア状態、最後のクライアント操作、および疑似削除された添付を取得します。
+      operationId: getMyQBotState
+      tags:
+        - qbot
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QBotState"
+  "/qbot/commands":
+    post:
+      summary: BOT謎のコマンドを実行
+      description: BOTが解釈したCOMMANDとTARGETを実行します。BOT_traqアカウント専用です。
+      operationId: executeQBotCommand
+      tags:
+        - qbot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/QBotCommandRequest"
+      responses:
+        "200":
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/QBotCommandResponse"
+        "400":
+          description: Bad Request
+        "403":
+          description: Forbidden
   "/channels/{channelId}/messages":
     parameters:
       - $ref: "#/components/parameters/channelIdInPath"
@@ -4727,6 +4765,76 @@ components:
       type: http
       scheme: bearer
   schemas:
+    QBotDeletedAttachment:
+      type: object
+      required:
+        - messageId
+        - fileId
+      properties:
+        messageId:
+          type: string
+          format: uuid
+        fileId:
+          type: string
+          format: uuid
+    QBotState:
+      type: object
+      required:
+        - cleared
+        - revision
+        - action
+        - actionPayload
+        - deletedAttachments
+      properties:
+        cleared:
+          type: boolean
+        revision:
+          type: integer
+          format: int64
+          minimum: 0
+        action:
+          type: string
+        actionPayload:
+          type: object
+          additionalProperties:
+            type: string
+        deletedAttachments:
+          type: array
+          items:
+            $ref: "#/components/schemas/QBotDeletedAttachment"
+    QBotCommandRequest:
+      type: object
+      required:
+        - command
+        - target
+        - userId
+        - messageId
+        - channelId
+      properties:
+        command:
+          type: string
+          enum: [count, list, open, send, delete, reset, debug]
+        target:
+          type: string
+          enum: [BOT, message, user, channel, stamp, file, image]
+        userId:
+          type: string
+          format: uuid
+        messageId:
+          type: string
+          format: uuid
+        channelId:
+          type: string
+          format: uuid
+    QBotCommandResponse:
+      type: object
+      required:
+        - reply
+      properties:
+        reply:
+          type: string
+        sendContent:
+          type: string
     Message:
       title: Message
       type: object
@@ -8290,6 +8398,8 @@ tags:
     description: OGP API
   - name: qall
     description: Qall API
+  - name: qbot
+    description: BOT謎API
 security:
   - OAuth2: []
   - bearerAuth: []

@@ -12,14 +12,19 @@ var (
 	errCommandNotImplemented = errors.New("command is not implemented")
 )
 
-type commandHandler func(context.Context, commandRequest) error
+type commandHandler func(context.Context, commandRequest) (commandResult, error)
+
+type commandRunner interface {
+	ExecuteQBotCommand(context.Context, commandRequest) (commandResult, error)
+}
 
 type commandExecutor struct {
 	handlers map[commandName]commandHandler
+	runner   commandRunner
 }
 
-func newCommandExecutor() *commandExecutor {
-	executor := &commandExecutor{}
+func newCommandExecutor(runner commandRunner) *commandExecutor {
+	executor := &commandExecutor{runner: runner}
 	executor.handlers = map[commandName]commandHandler{
 		commandCount:  executor.executeCount,
 		commandList:   executor.executeList,
@@ -32,17 +37,20 @@ func newCommandExecutor() *commandExecutor {
 	return executor
 }
 
-func (e *commandExecutor) execute(ctx context.Context, request commandRequest) error {
+func (e *commandExecutor) execute(ctx context.Context, request commandRequest) (commandResult, error) {
 	handler, ok := e.handlers[request.Command]
 	if !ok {
-		return fmt.Errorf("%w: %s", errUnknownCommand, request.Command)
+		return commandResult{}, fmt.Errorf("%w: %s", errUnknownCommand, request.Command)
 	}
 	if !request.Target.valid() {
-		return fmt.Errorf("%w: %s", errUnknownTarget, request.Target)
+		return commandResult{}, fmt.Errorf("%w: %s", errUnknownTarget, request.Target)
 	}
 	return handler(ctx, request)
 }
 
-func notImplemented(request commandRequest) error {
-	return fmt.Errorf("%w: %s %s", errCommandNotImplemented, request.Command, request.Target)
+func (e *commandExecutor) executeRemote(ctx context.Context, request commandRequest) (commandResult, error) {
+	if e.runner == nil {
+		return commandResult{}, fmt.Errorf("%w: %s %s", errCommandNotImplemented, request.Command, request.Target)
+	}
+	return e.runner.ExecuteQBotCommand(ctx, request)
 }

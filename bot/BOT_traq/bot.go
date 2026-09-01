@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"log"
+	mathrand "math/rand/v2"
 	"strings"
 	"time"
 
@@ -11,8 +12,9 @@ import (
 )
 
 type bot struct {
-	poster messagePoster
-	logger *log.Logger
+	poster   messagePoster
+	executor *commandExecutor
+	logger   *log.Logger
 }
 
 func newEventHandlers(b *bot) traqbot.EventHandlers {
@@ -25,25 +27,38 @@ func newEventHandlers(b *bot) traqbot.EventHandlers {
 }
 
 func (b *bot) handleMention(payload *traqbot.MessageCreatedPayload) {
-	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	reply := interpretationReply(payload.Message.PlainText)
-	if err := b.poster.PostMessage(ctx, payload.Message.ChannelID, reply); err != nil {
+	interpretations, err := interpretMessage(payload.Message.PlainText)
+	if err != nil {
+		if postErr := b.poster.PostMessage(ctx, payload.Message.ChannelID, interpretationErrorReply(err)); postErr != nil {
+			b.logger.Printf("failed to reply to mention message %s: %v", payload.Message.ID, postErr)
+		}
+		return
+	}
+	selected := selectInterpretation(interpretations)
+	parts := strings.SplitN(selected, " ", 2)
+	result, err := b.executor.execute(ctx, commandRequest{Command: commandName(parts[0]), Target: targetName(parts[1]), Message: payload.Message})
+	if err != nil {
+		b.logger.Printf("failed to execute %s for message %s: %v", selected, payload.Message.ID, err)
+		_ = b.poster.PostMessage(ctx, payload.Message.ChannelID, "処理中にエラーが発生しました。")
+		return
+	}
+	if err := b.poster.PostMessage(ctx, payload.Message.ChannelID, result.Reply); err != nil {
 		b.logger.Printf("failed to reply to mention message %s: %v", payload.Message.ID, err)
 		return
+	}
+	if result.SendContent != "" {
+		if err := b.poster.PostMessage(ctx, payload.Message.ChannelID, result.SendContent); err != nil {
+			b.logger.Printf("failed to send command result for message %s: %v", payload.Message.ID, err)
+			return
+		}
 	}
 	b.logger.Printf("replied to mention message %s", payload.Message.ID)
 }
 
-func interpretationReply(plainText string) string {
-	interpretations, err := interpretMessage(plainText)
-	if err == nil {
-		if len(interpretations) == 1 {
-			return interpretations[0]
-		}
-		return "- " + strings.Join(interpretations, "\n- ")
-	}
+func interpretationErrorReply(err error) string {
 	if errors.Is(err, errInvalidArgumentCount) {
 		return "引数を2つ指定してください。例: @BOT_traq file message"
 	}
@@ -51,4 +66,20 @@ func interpretationReply(plainText string) string {
 		return "構文エラー: ナイト移動後に有効な解釈がありません。"
 	}
 	return "構文エラー: " + err.Error()
+}
+
+func selectInterpretation(interpretations []string) string {
+	candidates := interpretations
+	if len(candidates) > 1 {
+		withoutReset := make([]string, 0, len(candidates)-1)
+		for _, candidate := range candidates {
+			if candidate != "reset BOT" {
+				withoutReset = append(withoutReset, candidate)
+			}
+		}
+		if len(withoutReset) > 0 {
+			candidates = withoutReset
+		}
+	}
+	return candidates[mathrand.IntN(len(candidates))]
 }

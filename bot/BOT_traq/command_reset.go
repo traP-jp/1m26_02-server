@@ -2,6 +2,6 @@ package main
 
 import "context"
 
-func (e *commandExecutor) executeReset(_ context.Context, request commandRequest) error {
-	return notImplemented(request)
+func (e *commandExecutor) executeReset(ctx context.Context, request commandRequest) (commandResult, error) {
+	return e.executeRemote(ctx, request)
 }

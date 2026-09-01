@@ -32,8 +32,8 @@ services:
 
   frontend:
     build:
-      context: ./dev
-      dockerfile: Dockerfile-frontend
+      context: ../1m26_02-client
+      dockerfile: Dockerfile.local
     restart: always
     expose:
       - "80"

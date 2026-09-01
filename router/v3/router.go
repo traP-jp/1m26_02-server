@@ -339,6 +339,11 @@ func (h *Handlers) Setup(e *echo.Group) {
 			apiActivity.GET("/timeline", h.GetActivityTimeline, requires(permission.GetMessage))
 			apiActivity.GET("/onlines", h.GetOnlineUsers, requires(permission.GetUser))
 		}
+		apiQBot := api.Group("/qbot")
+		{
+			apiQBot.GET("/state", h.GetMyQBotState)
+			apiQBot.POST("/commands", h.ExecuteQBotCommand, bodyLimit(10))
+		}
 		apiClients := api.Group("/clients", blockBot)
 		{
 			apiClients.GET("", h.GetClients, requires(permission.GetClients))

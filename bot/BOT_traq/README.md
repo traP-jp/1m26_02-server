@@ -1,6 +1,6 @@
 # BOT_traq
 
-BOT謎で使用するHTTP BOT。`BOT_traq`へのメンションに続く2単語を4×4盤面上のナイト移動で解釈し、同じチャンネルへ解釈候補を返す。
+BOT謎で使用するHTTP BOT。`BOT_traq`へのメンションに続く2単語を4×4盤面上のナイト移動で解釈し、選ばれたコマンドをtraQ serverへ依頼して同じチャンネルへ結果を返す。
 
 ## 現在の入力と応答
 
@@ -10,27 +10,16 @@ BOT謎で使用するHTTP BOT。`BOT_traq`へのメンションに続く2単語�
 @BOT_traq <1語目> <2語目>
 ```
 
-1語目のナイト移動先にあるCOMMANDと、2語目のナイト移動先にあるTARGETの直積を解釈候補とする。候補が1件なら1行で返し、複数なら箇条書きですべて返す。現在は候補の表示までを実装しており、候補からのランダム選択とコマンド実行はまだ行わない。
+1語目のナイト移動先にあるCOMMANDと、2語目のナイト移動先にあるTARGETの直積を解釈候補とする。候補が複数ならランダムに1件を実行する。ただし `reset BOT` は唯一の候補になった場合だけ選ぶ。
 
 ```text
 @BOT_traq file message
 ```
 
-```text
-reset BOT
-```
-
-複数候補の例:
+この入力は `reset BOT` だけに解釈できるため、BOTを復旧してゲームをクリアする。複数候補になる入力では、実際に選ばれた1件の結果だけを返す。
 
 ```text
 @BOT_traq BOT count
-```
-
-```text
-- count BOT
-- count stamp
-- reset BOT
-- reset stamp
 ```
 
 引数が2つでない、盤面に存在しない単語がある、または有効な移動先がない場合は構文エラーを返す。盤面と全移動候補は [`docs/q_bot.md`](../../../docs/q_bot.md) を参照する。
@@ -49,7 +38,9 @@ command_reset.go
 command_debug.go
 ```
 
-現在はディスパッチと入力検証だけを実装しており、各COMMAND関数は `errCommandNotImplemented` を返すスタブである。解釈候補の表示処理からはまだ呼び出さない。
+各COMMAND関数は共通の `POST /api/v3/qbot/commands` を呼ぶ。集計・一覧・削除・状態変更はserver側で実行し、`send` だけは応答本文とは別の投稿内容を受け取ってBOTが追加投稿する。これにより、BOTのAccess Tokenを持つプロセスと、DBやWebSocketを扱うserverの責務を分離している。
+
+`open` と添付の疑似削除はserverから対象ユーザーだけへ送る `QBOT_ACTION` WebSocketイベントで専用クライアントに反映する。ゲームのクリア状態、最後の画面操作リビジョン、`message ID + file ID` 単位の疑似削除はDBに保存され、再接続・再起動後も `GET /api/v3/qbot/state` から復元される。
 
 ## 使用ライブラリとイベント
 
@@ -74,7 +65,7 @@ traQのBOT設定では `MENTION_MESSAGE_CREATED` を購読する。現在のtraQ
 
 ## dev環境での起動
 
-serverリポジトリのルートで次を実行するだけで、traQとBOTが起動する。
+serverリポジトリのルートで次を実行するだけで、ローカルclient、traQ server、BOTが起動する。`1m26_02-client` と `1m26_02-server` は同じ親ディレクトリに置く。
 
 ```bash
 make up
@@ -96,7 +87,7 @@ traQ backendからBOTへはCompose内の `http://bot-traq:8080` で接続する�
 curl -i http://localhost:3003/healthz
 ```
 
-`204 No Content` が返れば起動している。traQ上で `@BOT_traq file message` を投稿し、`reset BOT` と返ることを確認する。
+`204 No Content` が返れば起動している。traQ上で `@BOT_traq file message` を投稿し、「BOTの復旧が完了しました。」と返ってクライアントにも復旧通知が出ることを確認する。
 
 自動登録の進行状況は次で確認できる。
 

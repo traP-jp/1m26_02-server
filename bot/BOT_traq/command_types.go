@@ -32,6 +32,11 @@ type commandRequest struct {
 	Message traqbot.MessagePayload
 }
 
+type commandResult struct {
+	Reply       string `json:"reply"`
+	SendContent string `json:"sendContent"`
+}
+
 func (t targetName) valid() bool {
 	switch t {
 	case targetBOT, targetMessage, targetUser, targetChannel, targetStamp, targetFile, targetImage:

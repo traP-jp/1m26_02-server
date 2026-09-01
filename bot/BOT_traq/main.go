@@ -36,7 +36,7 @@ func main() {
 	}
 
 	client := newTraQClient(cfg.APIBaseURL, cfg.AccessToken)
-	handlers := newEventHandlers(&bot{poster: client, logger: logger})
+	handlers := newEventHandlers(&bot{poster: client, executor: newCommandExecutor(client), logger: logger})
 	botServer := traqbot.NewBotServer(cfg.VerificationToken, handlers)
 
 	mux := http.NewServeMux()
