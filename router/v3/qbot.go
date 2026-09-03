@@ -421,7 +421,7 @@ func (h *Handlers) executeQBotReset(ctx context.Context, req qBotCommandRequest)
 }
 
 func (h *Handlers) executeQBotDebug(ctx context.Context, req qBotCommandRequest, invocation *model.Message) (qBotCommandResponse, error) {
-	data := map[string]any{"type": req.Target, "parser": "knight-move"}
+	data := map[string]any{}
 	switch req.Target {
 	case "BOT":
 		botUser, err := h.Repo.GetUserByName(ctx, qBotUserName, false)

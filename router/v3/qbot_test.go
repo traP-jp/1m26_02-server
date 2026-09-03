@@ -1,6 +1,12 @@
 package v3
 
-import "testing"
+import (
+	"context"
+	"strings"
+	"testing"
+
+	"github.com/traPtitech/traQ/model"
+)
 
 func TestQBotCommandMatrix(t *testing.T) {
 	commands := []string{"count", "list", "open", "send", "delete", "reset", "debug"}
@@ -40,5 +46,40 @@ func TestQBotFormatting(t *testing.T) {
 	}
 	if got := qBotOneLine("  one\n two   three  ", 7); got != "one two…" {
 		t.Errorf("qBotOneLine() = %q", got)
+	}
+}
+
+func TestExecuteQBotDebugOmitsParserAndType(t *testing.T) {
+	h := &Handlers{}
+	response, err := h.executeQBotDebug(
+		context.Background(),
+		qBotCommandRequest{Target: "message"},
+		&model.Message{Text: "test message"},
+	)
+	if err != nil {
+		t.Fatalf("executeQBotDebug() returned an error: %v", err)
+	}
+	for _, field := range []string{`"parser"`, `"type"`} {
+		if strings.Contains(response.Reply, field) {
+			t.Errorf("executeQBotDebug() unexpectedly included %s: %s", field, response.Reply)
+		}
+	}
+	if !strings.Contains(response.Reply, `"length": 12`) {
+		t.Errorf("executeQBotDebug() omitted target-specific data: %s", response.Reply)
+	}
+}
+
+func TestExecuteQBotDebugEmptyData(t *testing.T) {
+	h := &Handlers{}
+	response, err := h.executeQBotDebug(
+		context.Background(),
+		qBotCommandRequest{},
+		&model.Message{},
+	)
+	if err != nil {
+		t.Fatalf("executeQBotDebug() returned an error: %v", err)
+	}
+	if response.Reply != "```json\n{}\n```" {
+		t.Errorf("executeQBotDebug() = %q, want an empty JSON object", response.Reply)
 	}
 }
