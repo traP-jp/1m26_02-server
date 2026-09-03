@@ -164,7 +164,11 @@ func (h *Handlers) GetChannel(c *echo.Context) error {
 	ctx := c.Request().Context()
 	ch := getParamChannel(c)
 	userID := getRequestUserID(c)
-	return c.JSON(http.StatusOK, formatChannel(ch, h.ChannelManager.AccessibleChannelTree(ctx, userID).GetChildrenIDs(ch.ID)))
+	accessibleTree := h.ChannelManager.AccessibleChannelTree(ctx, userID)
+	if accessibleChannel, err := accessibleTree.GetModel(ch.ID); err == nil {
+		ch = accessibleChannel
+	}
+	return c.JSON(http.StatusOK, formatChannel(ch, accessibleTree.GetChildrenIDs(ch.ID)))
 }
 
 // PatchChannelRequest PATCH /channels/:channelID リクエストボディ
