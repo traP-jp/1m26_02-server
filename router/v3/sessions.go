@@ -72,6 +72,13 @@ func (h *Handlers) Login(c *echo.Context) error {
 	return c.NoContent(http.StatusNoContent)
 }
 
+func (h *Handlers) FakeLogin(c *echo.Context) error {
+	return echo.NewHTTPError(
+		http.StatusUnauthorized,
+		model.ErrUserWrongIDOrPassword.Error(),
+	)
+}
+
 // Logout POST /logout
 func (h *Handlers) Logout(c *echo.Context) error {
 	sess, err := h.SessStore.GetSession(c)
