@@ -102,7 +102,24 @@ func (h *Handlers) GetMyQBotState(c *echo.Context) error {
 	if err != nil {
 		return herror.InternalServerError(err)
 	}
+	if state.Cleared {
+		if err := h.postBotRecoveryForUser(c.Request().Context(), userID); err != nil {
+			return herror.InternalServerError(err)
+		}
+	}
 	return c.JSON(http.StatusOK, state)
+}
+
+func (h *Handlers) postBotRecoveryForUser(ctx context.Context, userID uuid.UUID) error {
+	player, err := h.Repo.GetUser(ctx, userID, false)
+	if err != nil {
+		return err
+	}
+	general, err := h.ChannelManager.GetChannelFromPath(ctx, player.GetName()+"/general")
+	if err != nil {
+		return err
+	}
+	return h.postSystemRecovery(ctx, general.ID, botSystemRecoveredMessage)
 }
 
 func (h *Handlers) ExecuteQBotCommand(c *echo.Context) error {
@@ -456,6 +473,9 @@ func (h *Handlers) executeQBotReset(ctx context.Context, req qBotCommandRequest)
 		return qBotCommandResponse{Reply: "権限がありません。"}, nil
 	}
 	if err := h.saveAndPublishQBotAction(ctx, req.UserID, "reset_bot", map[string]string{}, true); err != nil {
+		return qBotCommandResponse{}, err
+	}
+	if err := h.postBotRecoveryForUser(ctx, req.UserID); err != nil {
 		return qBotCommandResponse{}, err
 	}
 	return qBotCommandResponse{Reply: "BOTの復旧が完了しました。"}, nil

@@ -167,6 +167,7 @@ func TestHandlers_CreateUser(t *testing.T) {
 	env := Setup(t, common1)
 	user := env.CreateUser(t, rand)
 	admin := env.CreateAdmin(t, rand)
+	env.CreateBot(t, "traq", admin.GetID())
 	userSession := env.S(t, user.GetID())
 	adminSession := env.S(t, admin.GetID())
 
@@ -237,7 +238,7 @@ func TestHandlers_CreateUser(t *testing.T) {
 
 		createdUser, err := env.Repository.GetUserByName(context.Background(), name, false)
 		require.NoError(t, err)
-		_, err = env.CM.GetChannelFromPath(context.Background(), name+"/general")
+		general, err := env.CM.GetChannelFromPath(context.Background(), name+"/general")
 		require.NoError(t, err)
 		_, err = env.CM.GetChannelFromPath(context.Background(), name+"/general/1")
 		require.NoError(t, err)
@@ -247,6 +248,19 @@ func TestHandlers_CreateUser(t *testing.T) {
 		require.NoError(t, err)
 		descendants := env.CM.AccessibleChannelTree(context.Background(), createdUser.GetID()).GetDescendantIDs(lightsOut.ID)
 		assert.NotEmpty(t, descendants)
+
+		traQBot, err := env.Repository.GetUserByName(context.Background(), traQBotUserName, false)
+		require.NoError(t, err)
+		messages, _, err := env.Repository.GetMessages(context.Background(), repository.MessagesQuery{
+			Channel: general.ID,
+			User:    traQBot.GetID(),
+			Asc:     true,
+		})
+		require.NoError(t, err)
+		require.Len(t, messages, len(registrationGuideMessages))
+		for i, want := range registrationGuideMessages {
+			assert.Equal(t, want, messages[i].Text)
+		}
 	})
 }
 

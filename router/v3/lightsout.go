@@ -6,13 +6,74 @@ import (
 	"errors"
 	"fmt"
 	mathrand "math/rand"
+	"net/http"
+	"regexp"
 	"slices"
 
 	"github.com/gofrs/uuid"
+	"github.com/labstack/echo/v5"
 
+	"github.com/traPtitech/traQ/router/consts"
+	"github.com/traPtitech/traQ/router/extension/herror"
 	"github.com/traPtitech/traQ/service/channel"
 	"github.com/traPtitech/traQ/service/ws"
 )
+
+var lightsOutBoardStampPattern = regexp.MustCompile(`(?m)^:([^:\s]+): #.+$`)
+
+type clearLightsOutRequest struct {
+	MessageID uuid.UUID `json:"messageId"`
+}
+
+// PostClearLightsOut POST /channels/:channelID/clearlightsout
+func (h *Handlers) PostClearLightsOut(c *echo.Context) error {
+	ctx := c.Request().Context()
+	user := getRequestUser(c)
+	rootID := getParamAsUUID(c, consts.ParamChannelID)
+	var req clearLightsOutRequest
+	if err := bindAndValidate(c, &req); err != nil {
+		return err
+	}
+	board, err := h.ChannelManager.GetChannelFromPath(ctx, user.GetName()+"/general/1")
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+	msg, err := h.MessageManager.Get(ctx, req.MessageID)
+	if err != nil || msg.GetChannelID() != board.ID {
+		return herror.BadRequest("invalid lights out board")
+	}
+	root, err := h.ChannelManager.GetChannel(ctx, rootID)
+	if err != nil || root.Name != lightsOutRootChannelName {
+		return herror.BadRequest("invalid lights out root")
+	}
+	matches := lightsOutBoardStampPattern.FindAllStringSubmatch(msg.GetText(), -1)
+	if len(matches) == 0 {
+		return herror.BadRequest("invalid lights out board")
+	}
+	for _, match := range matches {
+		stamp, err := h.Repo.GetStampByName(ctx, match[1])
+		if err != nil {
+			return herror.BadRequest("invalid lights out stamp")
+		}
+		count := 0
+		for _, applied := range msg.GetStamps() {
+			if applied.StampID == stamp.ID && applied.UserID == user.GetID() {
+				count += applied.Count
+			}
+		}
+		if count != 1 {
+			return herror.BadRequest("lights out is not cleared")
+		}
+	}
+	general, err := h.ChannelManager.GetChannel(ctx, board.ParentID)
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+	if err := h.postSystemRecovery(ctx, general.ID, channelSystemRecoveredMessage); err != nil {
+		return herror.InternalServerError(err)
+	}
+	return c.NoContent(http.StatusNoContent)
+}
 
 const (
 	wsEventCreateLightsOut    = "CREATE_LIGHTS_OUT"

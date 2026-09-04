@@ -14,6 +14,7 @@ import (
 	"golang.org/x/sync/errgroup"
 
 	"github.com/traPtitech/traQ/event"
+	"github.com/traPtitech/traQ/model"
 	"github.com/traPtitech/traQ/repository"
 	"github.com/traPtitech/traQ/repository/gorm"
 	"github.com/traPtitech/traQ/service"
@@ -158,6 +159,26 @@ func serveCommand() *cobra.Command {
 				}
 
 				logger.Info("data initialization finished")
+			}
+
+			// 登録直後の案内メッセージの投稿者として使うシステムBOTを、
+			// 既存DBを含めて起動時に必ず用意する。
+			if _, err := repo.GetUserByName(context.Background(), "BOT_traq", false); err == repository.ErrNotFound {
+				creator, creatorErr := repo.GetUserByName(context.Background(), "traq", false)
+				if creatorErr != nil {
+					logger.Fatal("failed to get traq user for system bot", zap.Error(creatorErr))
+				}
+				fid, iconErr := file.GenerateIconFile(context.Background(), server.SS.FileManager, "BOT_traq")
+				if iconErr != nil {
+					logger.Fatal("failed to generate BOT_traq icon", zap.Error(iconErr))
+				}
+				bot, createErr := repo.CreateBot(context.Background(), "traq", "traq", "system guidance bot", fid, creator.GetID(), model.BotModeHTTP, model.BotInactive, "")
+				if createErr != nil {
+					logger.Fatal("failed to create BOT_traq", zap.Error(createErr))
+				}
+				logger.Info("BOT_traq was created", zap.Stringer("bot_id", bot.ID))
+			} else if err != nil {
+				logger.Fatal("failed to check BOT_traq", zap.Error(err))
 			}
 
 			serveCtx, serveCancel := context.WithCancel(context.Background())

@@ -2,6 +2,7 @@ package v3
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"sort"
 	"time"
@@ -27,6 +28,59 @@ import (
 	"github.com/traPtitech/traQ/utils/optional"
 	"github.com/traPtitech/traQ/utils/validator"
 )
+
+const traQBotUserName = "BOT_traq"
+
+const (
+	channelSystemRecoveredMessage = "チャンネルシステムが復旧しました"
+	botSystemRecoveredMessage     = "BOTシステムが復旧しました"
+	allSystemsClearedMessage      = "クリア"
+)
+
+var registrationGuideMessages = []string{
+	"チャンネルシステムが破損しています。\n#general/1 を確認してください。",
+	"BOTシステムが破損しています。\n#general/2 を確認して下さい。",
+}
+
+func (h *Handlers) postRegistrationGuides(ctx context.Context, channelID uuid.UUID) error {
+	botUser, err := h.Repo.GetUserByName(ctx, traQBotUserName, false)
+	if err != nil {
+		return fmt.Errorf("get %s user: %w", traQBotUserName, err)
+	}
+	for _, content := range registrationGuideMessages {
+		if _, err := h.MessageManager.Create(ctx, channelID, botUser.GetID(), content); err != nil {
+			return fmt.Errorf("post registration guide: %w", err)
+		}
+	}
+	return nil
+}
+
+func (h *Handlers) postSystemRecovery(ctx context.Context, generalID uuid.UUID, recoveredMessage string) error {
+	botUser, err := h.Repo.GetUserByName(ctx, traQBotUserName, false)
+	if err != nil {
+		return err
+	}
+	messages, _, err := h.Repo.GetMessages(ctx, repository.MessagesQuery{Channel: generalID, User: botUser.GetID(), Limit: 100})
+	if err != nil {
+		return err
+	}
+	present := make(map[string]bool, len(messages)+1)
+	for _, message := range messages {
+		present[message.Text] = true
+	}
+	if !present[recoveredMessage] {
+		if _, err := h.MessageManager.Create(ctx, generalID, botUser.GetID(), recoveredMessage); err != nil {
+			return err
+		}
+		present[recoveredMessage] = true
+	}
+	if present[channelSystemRecoveredMessage] && present[botSystemRecoveredMessage] && !present[allSystemsClearedMessage] {
+		if _, err := h.MessageManager.Create(ctx, generalID, botUser.GetID(), allSystemsClearedMessage); err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
 // GetUsers GET /users
 func (h *Handlers) GetUsers(c *echo.Context) error {
@@ -102,6 +156,9 @@ func (h *Handlers) CreateUser(c *echo.Context) error {
 	}
 	lightsOut, err := h.ChannelManager.CreatePublicChannel(ctx, lightsOutRootChannelName, root.ID, user.GetID())
 	if err != nil {
+		return herror.InternalServerError(err)
+	}
+	if err := h.postRegistrationGuides(ctx, general.ID); err != nil {
 		return herror.InternalServerError(err)
 	}
 	if err := h.createAndPublishLightsOut(ctx, user.GetID(), lightsOut.ID, board.ID); err != nil {

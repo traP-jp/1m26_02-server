@@ -218,6 +218,7 @@ func (h *Handlers) Setup(e *echo.Group) {
 				apiChannelsCID.GET("/path", h.GetChannelPath, requires(permission.GetChannel))
 				apiChannelsCID.POST("/createlightsout", h.PostCreateLightsOut, requires(permission.CreateChannel))
 				apiChannelsCID.POST("/deletelightsout", h.PostDeleteLightsOut, requires(permission.CreateChannel))
+				apiChannelsCID.POST("/clearlightsout", h.PostClearLightsOut, requires(permission.CreateChannel))
 			}
 		}
 		apiMessages := api.Group("/messages")
@@ -432,7 +433,7 @@ func (h *Handlers) Setup(e *echo.Group) {
 			apiNoAuth.POST("/users", h.CreateUser, noLogin)
 		}
 		apiNoAuth.POST("/login", h.Login, noLogin)
-		apiNoAuth.POST("/1ogin", h.FakeLogin)	//FakeLogin
+		apiNoAuth.POST("/1ogin", h.FakeLogin) //FakeLogin
 		apiNoAuth.POST("/logout", h.Logout)
 		apiNoAuth.POST("/webhooks/:webhookID", h.PostWebhook, retrieve.WebhookID())
 		apiNoAuth.POST("/qall/webhook", h.LiveKitWebhook)
