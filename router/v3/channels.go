@@ -25,7 +25,10 @@ import (
 
 // GetChannels GET /channels
 func (h *Handlers) GetChannels(c *echo.Context) error {
+
 	ctx := c.Request().Context()
+	userId := getRequestUserID(c)
+
 	if isTrue(c.QueryParam("include-dm")) && len(c.QueryParam("path")) > 0 {
 		return herror.BadRequest("include-dm and path cannot be specified at the same time")
 	}
@@ -33,23 +36,37 @@ func (h *Handlers) GetChannels(c *echo.Context) error {
 	var res map[string]any
 
 	if channelPath := c.QueryParam("path"); channelPath != "" {
-		targetChannel, err := h.ChannelManager.GetChannelFromPath(ctx, channelPath)
+		user, err := h.Repo.GetUser(c.Request().Context(), userId, false)
+		if err != nil {
+			return herror.InternalServerError(err)
+		}
+		targetChannel, err := h.ChannelManager.GetChannelFromPath(ctx, user.GetName()+"/"+channelPath)
 		if err != nil {
 			if errors.Is(err, channel.ErrInvalidChannelPath) {
 				return herror.HTTPError(http.StatusNotFound, err)
 			}
 			return herror.InternalServerError(err)
 		}
+		raw := h.ChannelManager.AccessibleChannelTree(ctx, userId).GetChildrenIDs(targetChannel.ID)
+		childrenId := []uuid.UUID{}
+		for _, id := range raw {
+			ch, err := h.ChannelManager.GetChannel(c.Request().Context(), id)
+			if err == nil {
+				if ch.IsPublic && ch.CreatorID == userId {
+					childrenId = append(childrenId, id)
+				}
+			}
+		}
+
 		res = map[string]any{
 			"public": []*Channel{
-				formatChannel(targetChannel, h.ChannelManager.PublicChannelTree(ctx).GetChildrenIDs(targetChannel.ID)),
+				formatChannel(targetChannel, childrenId),
 			},
 		}
 		return extension.ServeJSONWithETag(c, res)
 	}
-
 	res = map[string]any{
-		"public": h.ChannelManager.PublicChannelTree(ctx),
+		"public": h.ChannelManager.AccessibleChannelTree(ctx, userId),
 	}
 	if isTrue(c.QueryParam("include-dm")) {
 		mapping, err := h.ChannelManager.GetDMChannelMapping(ctx, getRequestUserID(c))
@@ -64,6 +81,13 @@ func (h *Handlers) GetChannels(c *echo.Context) error {
 // PostChannelRequest POST /channels リクエストボディ
 type PostChannelRequest struct {
 	Name   string                 `json:"name"`
+	Parent optional.Of[uuid.UUID] `json:"parent"`
+}
+
+// PostPrivateChannelRequest POST /privatechannels リクエストボディ
+type PostPrivateChannelRequest struct {
+	Name   string                 `json:"name"`
+	User   uuid.UUID              `json:"user"`
 	Parent optional.Of[uuid.UUID] `json:"parent"`
 }
 
@@ -104,11 +128,47 @@ func (h *Handlers) CreateChannels(c *echo.Context) error {
 	return c.JSON(http.StatusCreated, formatChannel(ch, make([]uuid.UUID, 0)))
 }
 
+func (h *Handlers) CreatePrivateChannels(c *echo.Context) error {
+	ctx := c.Request().Context()
+
+	var req PostPrivateChannelRequest
+	if err := bindAndValidate(c, &req); err != nil {
+		return err
+	}
+
+	ch, err := h.ChannelManager.CreatePublicChannel(ctx, req.Name, req.Parent.V, req.User)
+	if err != nil {
+		switch err {
+		case channel.ErrInvalidPrivateUser:
+			return herror.BadRequest("invalid private user")
+		case channel.ErrChannelArchived:
+			return herror.BadRequest("parent channel has been archived")
+		case channel.ErrInvalidChannelName:
+			return herror.BadRequest("invalid channel name")
+		case channel.ErrInvalidParentChannel:
+			return herror.BadRequest("invalid parent channel")
+		case channel.ErrTooDeepChannel:
+			return herror.BadRequest("channel depth limit exceeded")
+		case channel.ErrChannelNameConflicts:
+			return herror.Conflict("channel name conflicts")
+		default:
+			return herror.InternalServerError(err)
+		}
+	}
+
+	return c.JSON(http.StatusCreated, formatChannel(ch, make([]uuid.UUID, 0)))
+}
+
 // GetChannel GET /channels/:channelID
 func (h *Handlers) GetChannel(c *echo.Context) error {
 	ctx := c.Request().Context()
 	ch := getParamChannel(c)
-	return c.JSON(http.StatusOK, formatChannel(ch, h.ChannelManager.PublicChannelTree(ctx).GetChildrenIDs(ch.ID)))
+	userID := getRequestUserID(c)
+	accessibleTree := h.ChannelManager.AccessibleChannelTree(ctx, userID)
+	if accessibleChannel, err := accessibleTree.GetModel(ch.ID); err == nil {
+		ch = accessibleChannel
+	}
+	return c.JSON(http.StatusOK, formatChannel(ch, accessibleTree.GetChildrenIDs(ch.ID)))
 }
 
 // PatchChannelRequest PATCH /channels/:channelID リクエストボディ
@@ -424,6 +484,43 @@ func (h *Handlers) GetChannelPath(c *echo.Context) error {
 	channelID := getParamAsUUID(c, consts.ParamChannelID)
 
 	channelPath := h.ChannelManager.GetChannelPathFromID(ctx, channelID)
+	if i := strings.Index(channelPath, "/"); i != -1 {
+		channelPath = channelPath[i+1:]
+	}
 
 	return c.JSON(http.StatusOK, map[string]any{"path": channelPath})
+}
+
+// PostCreateLightsOut POST /channels/:channelID/createlightsout
+func (h *Handlers) PostCreateLightsOut(c *echo.Context) error {
+	ctx := c.Request().Context()
+	user := getRequestUser(c)
+	userID := user.GetID()
+	channelID := getParamAsUUID(c, consts.ParamChannelID)
+	boardChannel, err := h.ChannelManager.GetChannelFromPath(
+		ctx,
+		user.GetName()+"/"+lightsOutBoardChannelName+"/"+lightsOutBoardChildName,
+	)
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+
+	if err := h.createAndPublishLightsOut(ctx, userID, channelID, boardChannel.ID); err != nil {
+		if errors.Is(err, channel.ErrInvalidChannel) {
+			return herror.NotFound("channel not found")
+		}
+		return herror.InternalServerError(err)
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// PostDeleteLightsOut POST /channels/:channelID/deletelightsout
+func (h *Handlers) PostDeleteLightsOut(c *echo.Context) error {
+	ctx := c.Request().Context()
+	userID := getRequestUserID(c)
+	channelID := getParamAsUUID(c, consts.ParamChannelID)
+
+	h.ChannelManager.DeleteLightsOutChannel(ctx, channelID, userID)
+	h.publishDeleteLightsOut(userID, channelID)
+	return c.NoContent(http.StatusNoContent)
 }

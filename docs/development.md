@@ -26,6 +26,12 @@ Now you can access to
     + username: `root`
     + password: `password`
     + database: `traq`
++ `http://localhost:3003/healthz` for the BOT_MAI health check
++ `http://localhost:3004/healthz` for the BOT_AI health check
+
+`make up` also builds and starts `bot/BOT_MAI` and `bot/BOT_AI`. In the development Compose environment, both bot accounts, tokens, subscriptions, and activation are configured automatically; an external tunnel is not required. See [`bot/BOT_MAI/README.md`](../bot/BOT_MAI/README.md) and [`bot/BOT_AI/README.md`](../bot/BOT_AI/README.md) for details.
+
+The `frontend` service builds the local sibling repository at `../1m26_02-client` with `Dockerfile.local`, rather than downloading a released frontend. Keep `1m26_02-server` and `1m26_02-client` under the same parent directory. The local Caddy image serves the built client and proxies `/api/*` and `/.well-known/*` to the backend, so `make up` starts the server, matching client, q_bot, MariaDB, and supporting services together.
 
 The frontend container is disabled for local development. Start the client repository's Vite development server separately and open `http://localhost:8080`.
 

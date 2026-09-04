@@ -177,6 +177,30 @@ func TestPostBotRequest_Validate(t *testing.T) {
 	}
 }
 
+func TestPostBotRequestValidateAllowsInternalEndpointInDevelopment(t *testing.T) {
+	t.Parallel()
+
+	req := PostBotRequest{
+		Name:        "traq",
+		DisplayName: "q_bot",
+		Description: "development bot",
+		Mode:        "HTTP",
+		Endpoint:    "http://bot-traq:8080",
+	}
+	if err := req.validate(true); err != nil {
+		t.Fatalf("validate(true) error = %v", err)
+	}
+}
+
+func TestPatchBotRequestValidateAllowsInternalEndpointInDevelopment(t *testing.T) {
+	t.Parallel()
+
+	req := PatchBotRequest{Endpoint: optional.From("http://bot-traq:8080")}
+	if err := req.validateWithContext(context.Background(), true); err != nil {
+		t.Fatalf("validateWithContext(true) error = %v", err)
+	}
+}
+
 func TestHandlers_CreateBot(t *testing.T) {
 	t.Parallel()
 	path := "/api/v3/bots"

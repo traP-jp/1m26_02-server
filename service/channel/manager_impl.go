@@ -3,6 +3,7 @@ package channel
 import (
 	"context"
 	"fmt"
+	"math/rand"
 	"sync"
 	"time"
 
@@ -336,6 +337,51 @@ func (m *managerImpl) PublicChannelTree(_ context.Context) Tree {
 	return m.T
 }
 
+func (m *managerImpl) AccessibleChannelTree(_ context.Context, user uuid.UUID) Tree {
+	keep := map[uuid.UUID]struct{}{}
+
+	var visit func(uuid.UUID)
+	visit = func(id uuid.UUID) {
+		ch, err := m.T.GetModel(id)
+		if err != nil {
+			return
+		}
+		if ch.IsPublic && ch.CreatorID == user {
+			keep[id] = struct{}{}
+			for _, childID := range m.T.GetChildrenIDs(id) {
+				visit(childID)
+			}
+			return
+		}
+		for _, childID := range m.T.GetChildrenIDs(id) {
+			visit(childID)
+		}
+	}
+
+	for _, rootID := range m.T.GetChildrenIDs(uuid.Nil) {
+		visit(rootID)
+	}
+
+	channels := make([]*model.Channel, 0, len(keep))
+	for id := range keep {
+		ch, err := m.T.GetModel(id)
+		if err != nil {
+			continue
+		}
+		_, ok := keep[ch.ParentID]
+		if !ok {
+			ch.ParentID = uuid.Nil
+		}
+		channels = append(channels, ch)
+	}
+
+	tree, err := makeChannelTree(channels)
+	if err != nil {
+		return nil
+	}
+	return tree
+}
+
 func (m *managerImpl) ChangeChannelSubscriptions(ctx context.Context, channelID uuid.UUID, subscriptions map[uuid.UUID]model.ChannelSubscribeLevel, keepOffLevel bool, updaterID uuid.UUID) error {
 	if !m.IsPublicChannel(ctx, channelID) {
 		return ErrInvalidChannel
@@ -448,4 +494,32 @@ func (m *managerImpl) recordChannelEvent(channelID uuid.UUID, eventType model.Ch
 			m.L.Warn("failed to record channel event", zap.Error(err), zap.Stringer("channelID", channelID), zap.Stringer("type", eventType), zap.Any("detail", detail), zap.Time("datetime", datetime))
 		}
 	}()
+}
+
+func (m *managerImpl) CreateLightsOutChannel(ctx context.Context, rootChannelID, userID uuid.UUID, depth int) {
+	if depth <= 0 {
+		return
+	}
+	childCount := rand.Intn(3) + 1
+	names := []string{"dev", "test", "hoge", "huga", "sample", "apple", "banana", "god", "piyo", "times", "add", "sub", "get"}
+	rand.Shuffle(len(names), func(i, j int) { names[i], names[j] = names[j], names[i] })
+	for i := range childCount {
+		ch, err := m.CreatePublicChannel(ctx, names[i], rootChannelID, userID)
+		if err == nil {
+			m.CreateLightsOutChannel(ctx, ch.ID, userID, depth-1)
+		}
+	}
+}
+
+func (m *managerImpl) DeleteLightsOutChannel(ctx context.Context, rootChannelID, userID uuid.UUID) {
+	childs := m.T.getChildrenIDs(rootChannelID)
+	for _, childId := range childs {
+		m.UpdateChannel(ctx, childId,
+			repository.UpdateChannelArgs{
+				Name: optional.From(random.AlphaNumeric(20)),
+			},
+		)
+		m.ArchiveChannel(ctx, childId, userID)
+		m.DeleteLightsOutChannel(ctx, childId, userID)
+	}
 }

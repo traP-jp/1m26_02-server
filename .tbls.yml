@@ -386,3 +386,19 @@ comments:
     columnComments:
       user_id: ユーザーUUID
       notify_citation: メッセージ引用通知
+  - table: q_bot_states
+    tableComment: BOT謎のプレイヤー別状態テーブル
+    columnComments:
+      user_id: プレイヤーのユーザーUUID
+      cleared: BOT謎をクリアしたかどうか
+      revision: クライアント操作の単調増加リビジョン
+      action: 最後に要求したクライアント操作
+      action_payload: クライアント操作のJSON引数
+      updated_at: 状態更新日時
+  - table: q_bot_deleted_attachments
+    tableComment: BOT謎で疑似削除された添付の出現箇所テーブル
+    columnComments:
+      user_id: 疑似削除状態を所有するユーザーUUID
+      message_id: 添付を参照するメッセージUUID
+      file_id: 参照されるファイルUUID
+      created_at: 疑似削除日時

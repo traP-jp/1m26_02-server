@@ -1,9 +1,13 @@
 package v3
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
+	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	vd "github.com/go-ozzo/ozzo-validation/v4"
@@ -27,6 +31,103 @@ import (
 	"github.com/traPtitech/traQ/utils/optional"
 	"github.com/traPtitech/traQ/utils/validator"
 )
+
+const traQBotUserName = "BOT_traq"
+
+const (
+	channelSystemRecoveredMessage = "チャンネルシステムが復旧しました"
+	botSystemRecoveredMessage     = "BOTシステムが復旧しました"
+	clearImageFileName            = "CLEAR.png"
+)
+
+//go:embed CLEAR.png
+var clearImage []byte
+
+var registrationGuideMessages = []string{
+	"チャンネルシステムが破損しています。\n#general/1 を確認してください。",
+	"BOTシステムが破損しています。\n#general/2 を確認して下さい。",
+}
+
+func (h *Handlers) postRegistrationGuides(ctx context.Context, channelID uuid.UUID) error {
+	botUser, err := h.Repo.GetUserByName(ctx, traQBotUserName, false)
+	if err != nil {
+		return fmt.Errorf("get %s user: %w", traQBotUserName, err)
+	}
+	for _, content := range registrationGuideMessages {
+		if _, err := h.MessageManager.Create(ctx, channelID, botUser.GetID(), content); err != nil {
+			return fmt.Errorf("post registration guide: %w", err)
+		}
+	}
+	return nil
+}
+
+func (h *Handlers) postSystemRecovery(ctx context.Context, generalID uuid.UUID, recoveredMessage string) error {
+	botUser, err := h.Repo.GetUserByName(ctx, traQBotUserName, false)
+	if err != nil {
+		return err
+	}
+	messages, _, err := h.Repo.GetMessages(ctx, repository.MessagesQuery{Channel: generalID, User: botUser.GetID(), Limit: 100})
+	if err != nil {
+		return err
+	}
+	present := make(map[string]bool, len(messages)+1)
+	for _, message := range messages {
+		present[message.Text] = true
+	}
+	if !present[recoveredMessage] {
+		if _, err := h.MessageManager.Create(ctx, generalID, botUser.GetID(), recoveredMessage); err != nil {
+			return err
+		}
+		present[recoveredMessage] = true
+	}
+	if present[channelSystemRecoveredMessage] && present[botSystemRecoveredMessage] {
+		return h.postClearImage(ctx, generalID, botUser.GetID(), messages)
+	}
+	return nil
+}
+
+func (h *Handlers) postClearImage(ctx context.Context, channelID, botUserID uuid.UUID, messages []*model.Message) error {
+	files, _, err := h.Repo.GetFileMetas(ctx, repository.FilesQuery{
+		UploaderID: optional.From(botUserID),
+		ChannelID:  optional.From(channelID),
+		Limit:      100,
+		Type:       model.FileTypeUserFile,
+	})
+	if err != nil {
+		return err
+	}
+	messageTexts := make(map[string]struct{}, len(messages))
+	for _, message := range messages {
+		messageTexts[message.Text] = struct{}{}
+	}
+	for _, uploadedFile := range files {
+		if uploadedFile.Name != clearImageFileName {
+			continue
+		}
+		if _, ok := messageTexts[h.filePublicURL(uploadedFile.ID)]; ok {
+			return nil
+		}
+	}
+
+	uploadedFile, err := h.FileManager.Save(ctx, file.SaveArgs{
+		FileName:  clearImageFileName,
+		FileSize:  int64(len(clearImage)),
+		MimeType:  "image/png",
+		FileType:  model.FileTypeUserFile,
+		CreatorID: optional.From(botUserID),
+		ChannelID: optional.From(channelID),
+		Src:       bytes.NewReader(clearImage),
+	})
+	if err != nil {
+		return err
+	}
+	_, err = h.MessageManager.Create(ctx, channelID, botUserID, h.filePublicURL(uploadedFile.GetID()))
+	return err
+}
+
+func (h *Handlers) filePublicURL(fileID uuid.UUID) string {
+	return strings.TrimRight(h.Origin, "/") + "/files/" + fileID.String()
+}
 
 // GetUsers GET /users
 func (h *Handlers) GetUsers(c *echo.Context) error {
@@ -64,17 +165,18 @@ func (r PostUserRequest) Validate() error {
 
 // CreateUser POST /users
 func (h *Handlers) CreateUser(c *echo.Context) error {
+	ctx := c.Request().Context()
 	var req PostUserRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		return err
 	}
 
-	iconFileID, err := file.GenerateIconFile(c.Request().Context(), h.FileManager, req.Name)
+	iconFileID, err := file.GenerateIconFile(ctx, h.FileManager, req.Name)
 	if err != nil {
 		return herror.InternalServerError(err)
 	}
 
-	user, err := h.Repo.CreateUser(c.Request().Context(), repository.CreateUserArgs{Name: req.Name, Password: req.Password.ValueOrZero(), Role: role.User, IconFileID: iconFileID})
+	user, err := h.Repo.CreateUser(ctx, repository.CreateUserArgs{Name: req.Name, Password: req.Password.ValueOrZero(), Role: role.User, IconFileID: iconFileID})
 	if err != nil {
 		switch err {
 		case repository.ErrAlreadyExists:
@@ -82,6 +184,35 @@ func (h *Handlers) CreateUser(c *echo.Context) error {
 		default:
 			return herror.InternalServerError(err)
 		}
+	}
+	root, err := h.ChannelManager.CreatePublicChannel(ctx, req.Name, uuid.Nil, uuid.Nil)
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+	general, err := h.ChannelManager.CreatePublicChannel(ctx, lightsOutBoardChannelName, root.ID, user.GetID())
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+	board, err := h.ChannelManager.CreatePublicChannel(ctx, lightsOutBoardChildName, general.ID, user.GetID())
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+	qBotAssets, err := h.ChannelManager.CreatePublicChannel(ctx, "2", general.ID, user.GetID())
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+	lightsOut, err := h.ChannelManager.CreatePublicChannel(ctx, lightsOutRootChannelName, root.ID, user.GetID())
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+	if err := h.postRegistrationGuides(ctx, general.ID); err != nil {
+		return herror.InternalServerError(err)
+	}
+	if err := h.createAndPublishLightsOut(ctx, user.GetID(), lightsOut.ID, board.ID); err != nil {
+		return herror.InternalServerError(err)
+	}
+	if err := h.publishPostQBotAssets(ctx, qBotAssets.ID); err != nil {
+		return herror.InternalServerError(err)
 	}
 
 	return c.JSON(http.StatusCreated, formatUserDetail(user, []model.UserTag{}, []uuid.UUID{}))
@@ -146,7 +277,7 @@ type PatchMeRequest struct {
 
 func (r PatchMeRequest) ValidateWithContext(ctx context.Context) error {
 	return vd.ValidateStructWithContext(ctx, &r,
-		vd.Field(&r.DisplayName, vd.RuneLength(0, 32)),
+		vd.Field(&r.DisplayName, vd.RuneLength(0, 20)),
 		vd.Field(&r.TwitterID, validator.TwitterIDRule...),
 		vd.Field(&r.Bio, vd.RuneLength(0, 1000)),
 	)
@@ -165,7 +296,7 @@ func (h *Handlers) EditMe(c *echo.Context) error {
 	if req.HomeChannel.Valid {
 		if req.HomeChannel.V != uuid.Nil {
 			// チャンネル存在確認
-			if !h.ChannelManager.PublicChannelTree(ctx).IsChannelPresent(req.HomeChannel.V) {
+			if !h.ChannelManager.AccessibleChannelTree(ctx, userID).IsChannelPresent(req.HomeChannel.V) {
 				return herror.BadRequest("invalid homeChannel")
 			}
 		}
@@ -403,7 +534,7 @@ type PatchUserRequest struct {
 
 func (r PatchUserRequest) Validate() error {
 	return vd.ValidateStruct(&r,
-		vd.Field(&r.DisplayName, vd.RuneLength(0, 32)),
+		vd.Field(&r.DisplayName, vd.RuneLength(0, 20)),
 		vd.Field(&r.TwitterID, validator.TwitterIDRule...),
 		vd.Field(&r.Role, vd.RuneLength(0, 30)),
 		vd.Field(&r.State, vd.Min(0), vd.Max(2)),

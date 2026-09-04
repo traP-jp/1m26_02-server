@@ -73,15 +73,15 @@ func (u *oidcUserInfo) GetName() string {
 	s := strings.ReplaceAll(u.name, " ", "")
 	regex := regexp.MustCompile(`[^a-zA-Z0-9_-]`)
 	s = regex.ReplaceAllLiteralString(s, "_")
-	if us := utf8string.NewString(s); us.RuneCount() > 32 {
-		s = us.Slice(0, 32)
+	if us := utf8string.NewString(s); us.RuneCount() > 20 {
+		s = us.Slice(0, 20)
 	}
 	return s
 }
 
 func (u *oidcUserInfo) GetDisplayName() string {
-	if s := utf8string.NewString(u.name); s.RuneCount() > 32 {
-		return s.Slice(0, 32)
+	if s := utf8string.NewString(u.name); s.RuneCount() > 20 {
+		return s.Slice(0, 20)
 	}
 	return u.name
 }

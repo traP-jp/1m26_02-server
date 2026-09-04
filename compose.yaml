@@ -8,14 +8,11 @@ services:
       TRAQ_MARIADB_HOST: mysql
       TRAQ_ES_URL: http://es:9200
       TRAQ_PPROF: "true"
-      TRAQ_STORAGE_TYPE: composite
-      TRAQ_STORAGE_S3_BUCKET: traq
-      TRAQ_STORAGE_S3_REGION: ap-northeast-1
-      TRAQ_STORAGE_S3_ENDPOINT: http://s3:9000
-      TRAQ_STORAGE_S3_ACCESSKEY: ROOT
-      TRAQ_STORAGE_S3_SECRETKEY: PASSWORD
-      TRAQ_STORAGE_S3_CACHEDIR: ./storage
-      TRAQ_STORAGE_COMPOSITE_REMOTE: s3
+      # Browser-facing file URLs must stay on the backend origin in local
+      # development. An internal MinIO endpoint would produce redirects to a
+      # Docker-only hostname that the browser cannot resolve.
+      TRAQ_STORAGE_TYPE: local
+      TRAQ_STORAGE_LOCAL_DIR: ./storage
     entrypoint: ./traQ serve --dev --skip-init-emojis
     expose:
       - "80"
@@ -46,6 +43,43 @@ services:
   #     - "3000:80"
   #   depends_on:
   #     - backend
+
+  bot-mai:
+    build:
+      context: ./bot/BOT_MAI
+    restart: always
+    environment:
+      TRAQ_API_BASE_URL: http://backend:3000/api/v3
+      TRAQ_PUBLIC_ORIGIN: http://localhost:3000
+      TRAQ_BOT_AUTO_REGISTER: "true"
+      TRAQ_BOT_ENDPOINT: http://bot-mai:8080
+      TRAQ_DEV_USER_NAME: qbot_dev
+      TRAQ_DEV_USER_PASSWORD: qbot-dev-password
+      PORT: "8080"
+    expose:
+      - "8080"
+    ports:
+      - "3003:8080"
+    depends_on:
+      - backend
+
+  bot-ai:
+    build:
+      context: ./bot/BOT_AI
+    restart: always
+    environment:
+      TRAQ_API_BASE_URL: http://backend:3000/api/v3
+      TRAQ_BOT_AUTO_REGISTER: "true"
+      TRAQ_BOT_ENDPOINT: http://bot-ai:8080
+      TRAQ_DEV_USER_NAME: qbot_dev
+      TRAQ_DEV_USER_PASSWORD: qbot-dev-password
+      PORT: "8080"
+    expose:
+      - "8080"
+    ports:
+      - "3004:8080"
+    depends_on:
+      - backend
 
   mysql:
     image: mariadb:10.11.18@sha256:de61fed4a40d3842f3ee09944ba52792156cfd9adf489b2cc670fc6ded28df8d

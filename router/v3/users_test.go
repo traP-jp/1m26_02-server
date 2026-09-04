@@ -31,6 +31,41 @@ func userEquals(t *testing.T, expect model.UserInfo, actual *httpexpect.Object) 
 	actual.Value("updatedAt").String().NotEmpty()
 }
 
+func TestPostSystemRecoveryPostsClearImageOnce(t *testing.T) {
+	t.Parallel()
+
+	env := Setup(t, s2)
+	ctx := context.Background()
+	general := env.CreateChannel(t, rand)
+	botUser := env.CreateUser(t, traQBotUserName)
+	h := &Handlers{
+		Repo:           env.Repository,
+		MessageManager: env.MM,
+		FileManager:    env.FM,
+		Config:         Config{Origin: "https://q.example.com"},
+	}
+
+	require.NoError(t, h.postSystemRecovery(ctx, general.ID, channelSystemRecoveredMessage))
+	require.NoError(t, h.postSystemRecovery(ctx, general.ID, botSystemRecoveredMessage))
+	require.NoError(t, h.postSystemRecovery(ctx, general.ID, botSystemRecoveredMessage))
+
+	files, _, err := env.Repository.GetFileMetas(ctx, repository.FilesQuery{
+		UploaderID: optional.From(botUser.GetID()),
+		ChannelID:  optional.From(general.ID),
+		Type:       model.FileTypeUserFile,
+	})
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+	assert.Equal(t, clearImageFileName, files[0].Name)
+	require.NotEmpty(t, files[0].Thumbnails)
+	assert.Equal(t, "image/png", files[0].Mime)
+
+	messages, _, err := env.Repository.GetMessages(ctx, repository.MessagesQuery{Channel: general.ID, User: botUser.GetID(), Limit: 100})
+	require.NoError(t, err)
+	require.Len(t, messages, 3)
+	assert.Equal(t, "https://q.example.com/files/"+files[0].ID.String(), messages[0].Text)
+}
+
 func TestHandlers_GetUsers(t *testing.T) {
 	t.Parallel()
 
@@ -167,6 +202,7 @@ func TestHandlers_CreateUser(t *testing.T) {
 	env := Setup(t, common1)
 	user := env.CreateUser(t, rand)
 	admin := env.CreateAdmin(t, rand)
+	env.CreateBot(t, "traq", admin.GetID())
 	userSession := env.S(t, user.GetID())
 	adminSession := env.S(t, admin.GetID())
 
@@ -234,6 +270,32 @@ func TestHandlers_CreateUser(t *testing.T) {
 		obj.Value("groups").Array().Length().IsEqual(0)
 		obj.Value("bio").String().IsEmpty()
 		obj.Value("homeChannel").IsNull()
+
+		createdUser, err := env.Repository.GetUserByName(context.Background(), name, false)
+		require.NoError(t, err)
+		general, err := env.CM.GetChannelFromPath(context.Background(), name+"/general")
+		require.NoError(t, err)
+		_, err = env.CM.GetChannelFromPath(context.Background(), name+"/general/1")
+		require.NoError(t, err)
+		_, err = env.CM.GetChannelFromPath(context.Background(), name+"/general/2")
+		require.NoError(t, err)
+		lightsOut, err := env.CM.GetChannelFromPath(context.Background(), name+"/random")
+		require.NoError(t, err)
+		descendants := env.CM.AccessibleChannelTree(context.Background(), createdUser.GetID()).GetDescendantIDs(lightsOut.ID)
+		assert.NotEmpty(t, descendants)
+
+		traQBot, err := env.Repository.GetUserByName(context.Background(), traQBotUserName, false)
+		require.NoError(t, err)
+		messages, _, err := env.Repository.GetMessages(context.Background(), repository.MessagesQuery{
+			Channel: general.ID,
+			User:    traQBot.GetID(),
+			Asc:     true,
+		})
+		require.NoError(t, err)
+		require.Len(t, messages, len(registrationGuideMessages))
+		for i, want := range registrationGuideMessages {
+			assert.Equal(t, want, messages[i].Text)
+		}
 	})
 }
 
@@ -312,12 +374,12 @@ func TestHandlers_EditMe(t *testing.T) {
 			Status(http.StatusBadRequest)
 	})
 
-	t.Run("too long display name (more than 32 letters)", func(t *testing.T) {
+	t.Run("too long display name (more than 20 letters)", func(t *testing.T) {
 		t.Parallel()
 		e := env.R(t)
 		e.PATCH(path).
 			WithCookie(session.CookieName, s).
-			WithJSON(&PatchMeRequest{DisplayName: optional.From(strings.Repeat("a", 33))}).
+			WithJSON(&PatchMeRequest{DisplayName: optional.From(strings.Repeat("a", 21))}).
 			Expect().
 			Status(http.StatusBadRequest)
 	})
@@ -325,17 +387,17 @@ func TestHandlers_EditMe(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
 		t.Parallel()
 
-		t.Run("success (just 32 letters)", func(t *testing.T) {
+		t.Run("success (just 20 letters)", func(t *testing.T) {
 			e := env.R(t)
 			e.PATCH(path).
 				WithCookie(session.CookieName, s).
-				WithJSON(&PatchMeRequest{DisplayName: optional.From(strings.Repeat("a", 32))}).
+				WithJSON(&PatchMeRequest{DisplayName: optional.From(strings.Repeat("a", 20))}).
 				Expect().
 				Status(http.StatusNoContent)
 
 			profile, err := env.Repository.GetUser(context.TODO(), user.GetID(), true)
 			require.NoError(t, err)
-			assert.EqualValues(t, strings.Repeat("a", 32), profile.GetDisplayName())
+			assert.EqualValues(t, strings.Repeat("a", 20), profile.GetDisplayName())
 		})
 
 		t.Run("success (shorter name)", func(t *testing.T) {
@@ -902,7 +964,7 @@ func TestPatchUserRequest_Validate(t *testing.T) {
 		},
 		{
 			"too long display name",
-			fields{DisplayName: optional.From(strings.Repeat("a", 33))},
+			fields{DisplayName: optional.From(strings.Repeat("a", 21))},
 			true,
 		},
 		{
@@ -951,7 +1013,7 @@ func TestHandlers_EditUser(t *testing.T) {
 		e := env.R(t)
 		e.PATCH(path, user.GetID()).
 			WithCookie(session.CookieName, adminSession).
-			WithJSON(&PatchUserRequest{DisplayName: optional.From(strings.Repeat("a", 33))}).
+			WithJSON(&PatchUserRequest{DisplayName: optional.From(strings.Repeat("a", 21))}).
 			Expect().
 			Status(http.StatusBadRequest)
 	})

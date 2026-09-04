@@ -56,8 +56,13 @@ type Handlers struct {
 }
 
 type Config struct {
+	// Origin サーバーオリジン (e.g. https://q.trap.jp)
+	Origin   string
 	Version  string
 	Revision string
+
+	// Development 開発モードかどうか
+	Development bool
 
 	// SkyWaySecretKey SkyWayクレデンシャル用シークレットキー
 	SkyWaySecretKey string
@@ -195,6 +200,7 @@ func (h *Handlers) Setup(e *echo.Group) {
 		{
 			apiChannels.GET("", h.GetChannels, requires(permission.GetChannel))
 			apiChannels.POST("", h.CreateChannels, requires(permission.CreateChannel))
+			//apiChannels.POST("/private", h.CreatePrivateChannels, requires(permission.CreateChannel))
 			apiChannelsCID := apiChannels.Group("/:channelID", retrieve.ChannelID(), requiresChannelAccessPerm)
 			{
 				apiChannelsCID.GET("", h.GetChannel, requires(permission.GetChannel))
@@ -212,6 +218,9 @@ func (h *Handlers) Setup(e *echo.Group) {
 				apiChannelsCID.GET("/bots", h.GetChannelBots, requires(permission.GetChannel))
 				apiChannelsCID.GET("/events", h.GetChannelEvents, requires(permission.GetChannel))
 				apiChannelsCID.GET("/path", h.GetChannelPath, requires(permission.GetChannel))
+				apiChannelsCID.POST("/createlightsout", h.PostCreateLightsOut, requires(permission.CreateChannel))
+				apiChannelsCID.POST("/deletelightsout", h.PostDeleteLightsOut, requires(permission.CreateChannel))
+				apiChannelsCID.POST("/clearlightsout", h.PostClearLightsOut, requires(permission.CreateChannel))
 			}
 		}
 		apiMessages := api.Group("/messages")
@@ -335,6 +344,11 @@ func (h *Handlers) Setup(e *echo.Group) {
 			apiActivity.GET("/timeline", h.GetActivityTimeline, requires(permission.GetMessage))
 			apiActivity.GET("/onlines", h.GetOnlineUsers, requires(permission.GetUser))
 		}
+		apiQBot := api.Group("/qbot")
+		{
+			apiQBot.GET("/state", h.GetMyQBotState)
+			apiQBot.POST("/commands", h.ExecuteQBotCommand, bodyLimit(10))
+		}
 		apiClients := api.Group("/clients", blockBot)
 		{
 			apiClients.GET("", h.GetClients, requires(permission.GetClients))
@@ -421,6 +435,7 @@ func (h *Handlers) Setup(e *echo.Group) {
 			apiNoAuth.POST("/users", h.CreateUser, noLogin)
 		}
 		apiNoAuth.POST("/login", h.Login, noLogin)
+		apiNoAuth.POST("/1ogin", h.FakeLogin) //FakeLogin
 		apiNoAuth.POST("/logout", h.Logout)
 		apiNoAuth.POST("/webhooks/:webhookID", h.PostWebhook, retrieve.WebhookID())
 		apiNoAuth.POST("/qall/webhook", h.LiveKitWebhook)
