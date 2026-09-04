@@ -31,6 +31,41 @@ func userEquals(t *testing.T, expect model.UserInfo, actual *httpexpect.Object) 
 	actual.Value("updatedAt").String().NotEmpty()
 }
 
+func TestPostSystemRecoveryPostsClearImageOnce(t *testing.T) {
+	t.Parallel()
+
+	env := Setup(t, s2)
+	ctx := context.Background()
+	general := env.CreateChannel(t, rand)
+	botUser := env.CreateUser(t, traQBotUserName)
+	h := &Handlers{
+		Repo:           env.Repository,
+		MessageManager: env.MM,
+		FileManager:    env.FM,
+		Config:         Config{Origin: "https://q.example.com"},
+	}
+
+	require.NoError(t, h.postSystemRecovery(ctx, general.ID, channelSystemRecoveredMessage))
+	require.NoError(t, h.postSystemRecovery(ctx, general.ID, botSystemRecoveredMessage))
+	require.NoError(t, h.postSystemRecovery(ctx, general.ID, botSystemRecoveredMessage))
+
+	files, _, err := env.Repository.GetFileMetas(ctx, repository.FilesQuery{
+		UploaderID: optional.From(botUser.GetID()),
+		ChannelID:  optional.From(general.ID),
+		Type:       model.FileTypeUserFile,
+	})
+	require.NoError(t, err)
+	require.Len(t, files, 1)
+	assert.Equal(t, clearImageFileName, files[0].Name)
+	require.NotEmpty(t, files[0].Thumbnails)
+	assert.Equal(t, "image/png", files[0].Mime)
+
+	messages, _, err := env.Repository.GetMessages(ctx, repository.MessagesQuery{Channel: general.ID, User: botUser.GetID(), Limit: 100})
+	require.NoError(t, err)
+	require.Len(t, messages, 3)
+	assert.Equal(t, "https://q.example.com/files/"+files[0].ID.String(), messages[0].Text)
+}
+
 func TestHandlers_GetUsers(t *testing.T) {
 	t.Parallel()
 

@@ -56,6 +56,8 @@ type Handlers struct {
 }
 
 type Config struct {
+	// Origin サーバーオリジン (e.g. https://q.trap.jp)
+	Origin   string
 	Version  string
 	Revision string
 

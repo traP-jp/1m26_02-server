@@ -1,10 +1,13 @@
 package v3
 
 import (
+	"bytes"
 	"context"
+	_ "embed"
 	"fmt"
 	"net/http"
 	"sort"
+	"strings"
 	"time"
 
 	vd "github.com/go-ozzo/ozzo-validation/v4"
@@ -34,8 +37,11 @@ const traQBotUserName = "BOT_traq"
 const (
 	channelSystemRecoveredMessage = "チャンネルシステムが復旧しました"
 	botSystemRecoveredMessage     = "BOTシステムが復旧しました"
-	allSystemsClearedMessage      = "クリア"
+	clearImageFileName            = "CLEAR.png"
 )
+
+//go:embed CLEAR.png
+var clearImage []byte
 
 var registrationGuideMessages = []string{
 	"チャンネルシステムが破損しています。\n#general/1 を確認してください。",
@@ -74,12 +80,53 @@ func (h *Handlers) postSystemRecovery(ctx context.Context, generalID uuid.UUID, 
 		}
 		present[recoveredMessage] = true
 	}
-	if present[channelSystemRecoveredMessage] && present[botSystemRecoveredMessage] && !present[allSystemsClearedMessage] {
-		if _, err := h.MessageManager.Create(ctx, generalID, botUser.GetID(), allSystemsClearedMessage); err != nil {
-			return err
-		}
+	if present[channelSystemRecoveredMessage] && present[botSystemRecoveredMessage] {
+		return h.postClearImage(ctx, generalID, botUser.GetID(), messages)
 	}
 	return nil
+}
+
+func (h *Handlers) postClearImage(ctx context.Context, channelID, botUserID uuid.UUID, messages []*model.Message) error {
+	files, _, err := h.Repo.GetFileMetas(ctx, repository.FilesQuery{
+		UploaderID: optional.From(botUserID),
+		ChannelID:  optional.From(channelID),
+		Limit:      100,
+		Type:       model.FileTypeUserFile,
+	})
+	if err != nil {
+		return err
+	}
+	messageTexts := make(map[string]struct{}, len(messages))
+	for _, message := range messages {
+		messageTexts[message.Text] = struct{}{}
+	}
+	for _, uploadedFile := range files {
+		if uploadedFile.Name != clearImageFileName {
+			continue
+		}
+		if _, ok := messageTexts[h.filePublicURL(uploadedFile.ID)]; ok {
+			return nil
+		}
+	}
+
+	uploadedFile, err := h.FileManager.Save(ctx, file.SaveArgs{
+		FileName:  clearImageFileName,
+		FileSize:  int64(len(clearImage)),
+		MimeType:  "image/png",
+		FileType:  model.FileTypeUserFile,
+		CreatorID: optional.From(botUserID),
+		ChannelID: optional.From(channelID),
+		Src:       bytes.NewReader(clearImage),
+	})
+	if err != nil {
+		return err
+	}
+	_, err = h.MessageManager.Create(ctx, channelID, botUserID, h.filePublicURL(uploadedFile.GetID()))
+	return err
+}
+
+func (h *Handlers) filePublicURL(fileID uuid.UUID) string {
+	return strings.TrimRight(h.Origin, "/") + "/files/" + fileID.String()
 }
 
 // GetUsers GET /users
