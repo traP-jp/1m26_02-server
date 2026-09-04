@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	logger := log.New(os.Stdout, "BOT_traq: ", log.LstdFlags|log.LUTC)
+	logger := log.New(os.Stdout, "BOT_AI: ", log.LstdFlags|log.LUTC)
 	cfg, err := loadConfig(os.Getenv)
 	if err != nil {
 		logger.Fatal(err)
@@ -71,6 +71,7 @@ func main() {
 		}
 		logger.Printf("development bot is active")
 	}
+	go runLightsOutWebSocket(ctx, cfg.APIBaseURL, cfg.AccessToken, client, logger)
 
 	select {
 	case err = <-serveErr:

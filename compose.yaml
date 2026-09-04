@@ -16,7 +16,7 @@ services:
       TRAQ_STORAGE_S3_SECRETKEY: PASSWORD
       TRAQ_STORAGE_S3_CACHEDIR: ./storage
       TRAQ_STORAGE_COMPOSITE_REMOTE: s3
-    entrypoint: ./traQ serve --dev --skip-init-emojis
+    entrypoint: ./traQ serve --dev
     expose:
       - "80"
       - "6060"
@@ -32,8 +32,8 @@ services:
 
   frontend:
     build:
-      context: ./dev
-      dockerfile: Dockerfile-frontend
+      context: ../1m26_02-client
+      dockerfile: Dockerfile.local
     restart: always
     expose:
       - "80"

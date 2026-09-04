@@ -1,12 +1,12 @@
-# BOT_traq
+# BOT_AI
 
-BOT謎で使用するHTTP BOT。現在は `BOT_traq` をメンションすると、同じチャンネルへ「呼びましたか？」と投稿する。
+BOT謎で使用する表示名「あい」のBOT。`BOT_AI` をメンションすると同じチャンネルへ「呼びましたか？」と投稿するほか、traQのユーザーWebSocketで `CREATE_LIGHTS_OUT` を受信すると `#general` に `#random` 配下のLights Out対応表を投稿し、操作用の全スタンプをBOT自身で付ける。
 
 ## 使用ライブラリとイベント
 
 イベント受信には [traPtitech/traq-bot](https://github.com/traPtitech/traq-bot) v1.0.3を使用する。このライブラリは、traQから届くHTTPイベントの検証トークン確認とpayloadのデコードを担当する。traQへリクエストを送るAPIクライアントは含まれないため、メッセージ投稿部分はこのBOT内のHTTPクライアントで実装している。
 
-traQのBOT設定では `MENTION_MESSAGE_CREATED` を購読する。現在のtraQ serverは、この購読設定を使ってメンション対象BOTを選んだ後、BOTのHTTP endpointには `X-TRAQ-BOT-EVENT: MESSAGE_CREATED` として配送する。そのため、コードでは `traqbot.EventHandlers.SetMessageCreatedHandler` を登録している。
+traQのBOT設定では `MENTION_MESSAGE_CREATED` を購読する。現在のtraQ serverは、この購読設定を使ってメンション対象BOTを選んだ後、BOTのHTTP endpointには `X-TRAQ-BOT-EVENT: MESSAGE_CREATED` として配送する。そのため、コードでは `traqbot.EventHandlers.SetMessageCreatedHandler` を登録している。Lights Out用の独自イベントはAccess TokenでBOT専用の `/api/v3/bots/ws` に接続して受信する。
 
 ## 環境変数
 
@@ -34,7 +34,7 @@ make up
 Compose内ではBOTを `bot-traq` サービスとして起動する。BOTはtraQ APIの準備完了を待ち、次を自動で行う。
 
 1. dev専用ユーザー `qbot_dev` を作成または再利用してログインする。
-2. HTTP BOT `BOT_traq` を初回だけ発行し、再起動時は既存BOTを再利用する。
+2. 表示名「あい」のHTTP BOT `BOT_AI` を初回だけ発行し、再起動時は既存BOTを再利用する。
 3. 既存の購読イベントを残したまま `MENTION_MESSAGE_CREATED` を追加する。
 4. 発行済みのAccess TokenとVerification Tokenを取得してBOTサーバーを起動する。
 5. BOTを有効化する。
@@ -47,7 +47,7 @@ traQ backendからBOTへはCompose内の `http://bot-traq:8080` で接続する�
 curl -i http://localhost:3003/healthz
 ```
 
-`204 No Content` が返れば起動している。traQ上で `@BOT_traq` を含むメッセージを投稿し、「呼びましたか？」と返ることを確認する。
+`204 No Content` が返れば起動している。traQ上で `@BOT_AI` を含むメッセージを投稿し、「呼びましたか？」と返ることを確認する。
 
 自動登録の進行状況は次で確認できる。
 

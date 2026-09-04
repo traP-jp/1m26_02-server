@@ -491,22 +491,36 @@ func (h *Handlers) GetChannelPath(c *echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]any{"path": channelPath})
 }
 
-// GetChannelPath POT /channels/:channelID/createlightsout
+// PostCreateLightsOut POST /channels/:channelID/createlightsout
 func (h *Handlers) PostCreateLightsOut(c *echo.Context) error {
 	ctx := c.Request().Context()
-	userId := getRequestUserID(c)
+	user := getRequestUser(c)
+	userID := user.GetID()
 	channelID := getParamAsUUID(c, consts.ParamChannelID)
+	boardChannel, err := h.ChannelManager.GetChannelFromPath(
+		ctx,
+		user.GetName()+"/"+lightsOutBoardChannelName+"/"+lightsOutBoardChildName,
+	)
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
 
-	h.ChannelManager.CreateLightsOutChannel(ctx, channelID, userId, 4)
-	return nil
+	if err := h.createAndPublishLightsOut(ctx, userID, channelID, boardChannel.ID); err != nil {
+		if errors.Is(err, channel.ErrInvalidChannel) {
+			return herror.NotFound("channel not found")
+		}
+		return herror.InternalServerError(err)
+	}
+	return c.NoContent(http.StatusNoContent)
 }
 
-// GetChannelPath POT /channels/:channelID/deletelightsout
+// PostDeleteLightsOut POST /channels/:channelID/deletelightsout
 func (h *Handlers) PostDeleteLightsOut(c *echo.Context) error {
 	ctx := c.Request().Context()
-	userId := getRequestUserID(c)
+	userID := getRequestUserID(c)
 	channelID := getParamAsUUID(c, consts.ParamChannelID)
 
-	h.ChannelManager.DeleteLightsOutChannel(ctx, channelID, userId)
-	return nil
+	h.ChannelManager.DeleteLightsOutChannel(ctx, channelID, userID)
+	h.publishDeleteLightsOut(userID, channelID)
+	return c.NoContent(http.StatusNoContent)
 }

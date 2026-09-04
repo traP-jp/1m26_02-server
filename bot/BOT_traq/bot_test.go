@@ -82,8 +82,8 @@ func TestMentionEventRepliesToSourceChannel(t *testing.T) {
   "message": {
     "id": "message-id",
     "channelId": "channel-id",
-    "text": "@BOT_traq",
-    "plainText": "@BOT_traq"
+    "text": "@BOT_AI",
+    "plainText": "@BOT_AI"
   }
 }`
 	req := httptest.NewRequest(http.MethodPost, "/", strings.NewReader(body))

@@ -16,10 +16,10 @@ import (
 )
 
 const (
-	devBotName        = "traq"
+	devBotName        = "AI"
 	devBotUserName    = "BOT_" + devBotName
-	devBotDisplayName = "q_bot"
-	devBotDescription = "q_bot development bot"
+	devBotDisplayName = "あい"
+	devBotDescription = "あい development bot"
 	mentionEvent      = "MENTION_MESSAGE_CREATED"
 )
 
@@ -45,6 +45,7 @@ type apiUser struct {
 type apiBot struct {
 	ID              string   `json:"id"`
 	BotUserID       string   `json:"botUserId"`
+	DisplayName     string   `json:"displayName"`
 	Endpoint        string   `json:"endpoint"`
 	SubscribeEvents []string `json:"subscribeEvents"`
 	Tokens          struct {
@@ -178,6 +179,10 @@ func (p *devProvisioner) findOrCreateBot(ctx context.Context) (apiBot, bool, err
 
 func (p *devProvisioner) ensureConfiguration(ctx context.Context, bot *apiBot) error {
 	body := make(map[string]any)
+	if bot.DisplayName != devBotDisplayName {
+		body["displayName"] = devBotDisplayName
+		bot.DisplayName = devBotDisplayName
+	}
 	hasMentionEvent := false
 	for _, event := range bot.SubscribeEvents {
 		if event == mentionEvent {
