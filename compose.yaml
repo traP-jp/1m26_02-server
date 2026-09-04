@@ -16,7 +16,7 @@ services:
       TRAQ_STORAGE_S3_SECRETKEY: PASSWORD
       TRAQ_STORAGE_S3_CACHEDIR: ./storage
       TRAQ_STORAGE_COMPOSITE_REMOTE: s3
-    entrypoint: ./traQ serve --dev --skip-init-emojis
+    entrypoint: ./traQ serve --dev
     expose:
       - "80"
       - "6060"
@@ -42,14 +42,14 @@ services:
     depends_on:
       - backend
 
-  bot-traq:
+  bot-mai:
     build:
       context: ./bot/BOT_MAI
     restart: always
     environment:
       TRAQ_API_BASE_URL: http://backend:3000/api/v3
       TRAQ_BOT_AUTO_REGISTER: "true"
-      TRAQ_BOT_ENDPOINT: http://bot-traq:8080
+      TRAQ_BOT_ENDPOINT: http://bot-mai:8080
       TRAQ_DEV_USER_NAME: qbot_dev
       TRAQ_DEV_USER_PASSWORD: qbot-dev-password
       PORT: "8080"
@@ -57,6 +57,24 @@ services:
       - "8080"
     ports:
       - "3003:8080"
+    depends_on:
+      - backend
+
+  bot-ai:
+    build:
+      context: ./bot/BOT_AI
+    restart: always
+    environment:
+      TRAQ_API_BASE_URL: http://backend:3000/api/v3
+      TRAQ_BOT_AUTO_REGISTER: "true"
+      TRAQ_BOT_ENDPOINT: http://bot-ai:8080
+      TRAQ_DEV_USER_NAME: qbot_dev
+      TRAQ_DEV_USER_PASSWORD: qbot-dev-password
+      PORT: "8080"
+    expose:
+      - "8080"
+    ports:
+      - "3004:8080"
     depends_on:
       - backend
 

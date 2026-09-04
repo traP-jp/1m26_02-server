@@ -44,7 +44,8 @@ type Manager interface {
 
 	IsChannelAccessibleToUser(ctx context.Context, userID, channelID uuid.UUID) (bool, error)
 	IsPublicChannel(ctx context.Context, id uuid.UUID) bool
-
+	CreateLightsOutChannel(ctx context.Context, rootChannelID, userID uuid.UUID, depth int)
+	DeleteLightsOutChannel(ctx context.Context, rootChannelID, userID uuid.UUID)
 	// Wait マネージャーの処理の完了を待ちます
 	Wait()
 }

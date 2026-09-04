@@ -64,17 +64,18 @@ func (r PostUserRequest) Validate() error {
 
 // CreateUser POST /users
 func (h *Handlers) CreateUser(c *echo.Context) error {
+	ctx := c.Request().Context()
 	var req PostUserRequest
 	if err := bindAndValidate(c, &req); err != nil {
 		return err
 	}
 
-	iconFileID, err := file.GenerateIconFile(c.Request().Context(), h.FileManager, req.Name)
+	iconFileID, err := file.GenerateIconFile(ctx, h.FileManager, req.Name)
 	if err != nil {
 		return herror.InternalServerError(err)
 	}
 
-	user, err := h.Repo.CreateUser(c.Request().Context(), repository.CreateUserArgs{Name: req.Name, Password: req.Password.ValueOrZero(), Role: role.User, IconFileID: iconFileID})
+	user, err := h.Repo.CreateUser(ctx, repository.CreateUserArgs{Name: req.Name, Password: req.Password.ValueOrZero(), Role: role.User, IconFileID: iconFileID})
 	if err != nil {
 		switch err {
 		case repository.ErrAlreadyExists:
@@ -83,14 +84,26 @@ func (h *Handlers) CreateUser(c *echo.Context) error {
 			return herror.InternalServerError(err)
 		}
 	}
-	root, err := h.ChannelManager.CreatePublicChannel(c.Request().Context(), req.Name, uuid.Nil, uuid.Nil)
+	root, err := h.ChannelManager.CreatePublicChannel(ctx, req.Name, uuid.Nil, uuid.Nil)
 	if err != nil {
 		return herror.InternalServerError(err)
 	}
-	_, err = h.ChannelManager.CreatePublicChannel(c.Request().Context(), "general", root.ID, user.GetID())
+	general, err := h.ChannelManager.CreatePublicChannel(ctx, lightsOutBoardChannelName, root.ID, user.GetID())
 	if err != nil {
 		return herror.InternalServerError(err)
 	}
+	board, err := h.ChannelManager.CreatePublicChannel(ctx, lightsOutBoardChildName, general.ID, user.GetID())
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+	lightsOut, err := h.ChannelManager.CreatePublicChannel(ctx, lightsOutRootChannelName, root.ID, user.GetID())
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+	if err := h.createAndPublishLightsOut(ctx, user.GetID(), lightsOut.ID, board.ID); err != nil {
+		return herror.InternalServerError(err)
+	}
+
 	return c.JSON(http.StatusCreated, formatUserDetail(user, []model.UserTag{}, []uuid.UUID{}))
 }
 

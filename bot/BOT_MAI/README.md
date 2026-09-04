@@ -58,7 +58,7 @@ traQのBOT設定では `MENTION_MESSAGE_CREATED` を購読する。現在のtraQ
 | `TRAQ_BOT_ACCESS_TOKEN` | 通常起動時 | BOT詳細画面で発行されたAccess Token | — |
 | `TRAQ_BOT_VERIFICATION_TOKEN` | 通常起動時 | BOT詳細画面で発行されたVerification Token | — |
 | `TRAQ_BOT_AUTO_REGISTER` | 任意 | dev環境でBOTを自動発行・設定する。`true`の場合は手動トークンが不要 | `true` |
-| `TRAQ_BOT_ENDPOINT` | 自動登録時 | traQ backendから到達できるBOTのHTTP endpoint | `http://bot-traq:8080` |
+| `TRAQ_BOT_ENDPOINT` | 自動登録時 | traQ backendから到達できるBOTのHTTP endpoint | `http://bot-mai:8080` |
 | `TRAQ_DEV_USER_NAME` | 自動登録時 | BOTを所有するdev専用ユーザー名 | `qbot_dev` |
 | `TRAQ_DEV_USER_PASSWORD` | 自動登録時 | dev専用ユーザーのパスワード | — |
 | `PORT` | 任意 | HTTP待受ポート。未指定時は`8080` | `8080` |
@@ -73,7 +73,7 @@ serverリポジトリのルートで次を実行するだけで、ローカルcl
 make up
 ```
 
-Compose内ではBOTを `bot-traq` サービスとして起動する。BOTはtraQ APIの準備完了を待ち、次を自動で行う。
+Compose内ではBOTを `bot-mai` サービスとして起動する。BOTはtraQ APIの準備完了を待ち、次を自動で行う。
 
 1. dev専用ユーザー `qbot_dev` を作成または再利用してログインする。
 2. HTTP BOT `BOT_MAI` を初回だけ発行し、再起動時は既存BOTを再利用する。
@@ -81,7 +81,7 @@ Compose内ではBOTを `bot-traq` サービスとして起動する。BOTはtraQ
 4. 発行済みのAccess TokenとVerification Tokenを取得してBOTサーバーを起動する。
 5. BOTを有効化する。
 
-traQ backendからBOTへはCompose内の `http://bot-traq:8080` で接続するため、Cloudflare Tunnelやngrokは不要である。traQは <http://localhost:3000>、BOTの死活確認は <http://localhost:3003/healthz> で開ける。
+traQ backendからBOTへはCompose内の `http://bot-mai:8080` で接続するため、Cloudflare Tunnelやngrokは不要である。traQは <http://localhost:3000>、BOTの死活確認は <http://localhost:3003/healthz> で開ける。
 
 死活確認:
 
@@ -94,7 +94,7 @@ curl -i http://localhost:3003/healthz
 自動登録の進行状況は次で確認できる。
 
 ```bash
-docker compose logs -f bot-traq
+docker compose logs -f bot-mai
 ```
 
 `qbot_dev`が既に存在し、Composeに設定されたものと異なるパスワードを持つ場合、自動ログインは失敗する。その場合は`compose.yaml`の`TRAQ_DEV_USER_NAME`と`TRAQ_DEV_USER_PASSWORD`を既存ユーザーに合わせる。
@@ -106,7 +106,7 @@ docker compose logs -f bot-traq
 ```bash
 go test ./...
 go build ./...
-docker build -t bot-traq .
+docker build -t bot-mai .
 ```
 
 serverルートの `go test ./...` にはこの入れ子のmoduleは含まれないため、BOTのテストはこのディレクトリで別に実行する。

@@ -164,7 +164,11 @@ func (h *Handlers) GetChannel(c *echo.Context) error {
 	ctx := c.Request().Context()
 	ch := getParamChannel(c)
 	userID := getRequestUserID(c)
-	return c.JSON(http.StatusOK, formatChannel(ch, h.ChannelManager.AccessibleChannelTree(ctx, userID).GetChildrenIDs(ch.ID)))
+	accessibleTree := h.ChannelManager.AccessibleChannelTree(ctx, userID)
+	if accessibleChannel, err := accessibleTree.GetModel(ch.ID); err == nil {
+		ch = accessibleChannel
+	}
+	return c.JSON(http.StatusOK, formatChannel(ch, accessibleTree.GetChildrenIDs(ch.ID)))
 }
 
 // PatchChannelRequest PATCH /channels/:channelID リクエストボディ
@@ -485,4 +489,38 @@ func (h *Handlers) GetChannelPath(c *echo.Context) error {
 	}
 
 	return c.JSON(http.StatusOK, map[string]any{"path": channelPath})
+}
+
+// PostCreateLightsOut POST /channels/:channelID/createlightsout
+func (h *Handlers) PostCreateLightsOut(c *echo.Context) error {
+	ctx := c.Request().Context()
+	user := getRequestUser(c)
+	userID := user.GetID()
+	channelID := getParamAsUUID(c, consts.ParamChannelID)
+	boardChannel, err := h.ChannelManager.GetChannelFromPath(
+		ctx,
+		user.GetName()+"/"+lightsOutBoardChannelName+"/"+lightsOutBoardChildName,
+	)
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
+
+	if err := h.createAndPublishLightsOut(ctx, userID, channelID, boardChannel.ID); err != nil {
+		if errors.Is(err, channel.ErrInvalidChannel) {
+			return herror.NotFound("channel not found")
+		}
+		return herror.InternalServerError(err)
+	}
+	return c.NoContent(http.StatusNoContent)
+}
+
+// PostDeleteLightsOut POST /channels/:channelID/deletelightsout
+func (h *Handlers) PostDeleteLightsOut(c *echo.Context) error {
+	ctx := c.Request().Context()
+	userID := getRequestUserID(c)
+	channelID := getParamAsUUID(c, consts.ParamChannelID)
+
+	h.ChannelManager.DeleteLightsOutChannel(ctx, channelID, userID)
+	h.publishDeleteLightsOut(userID, channelID)
+	return c.NoContent(http.StatusNoContent)
 }

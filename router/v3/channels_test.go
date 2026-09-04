@@ -354,6 +354,12 @@ func TestHandlers_GetChannel(t *testing.T) {
 	env := Setup(t, common1)
 	user := env.CreateUser(t, rand)
 	channel := env.CreateChannel(t, rand)
+	hiddenRoot, err := env.CM.CreatePublicChannel(context.TODO(), random.AlphaNumeric(20), uuid.Nil, uuid.Nil)
+	require.NoError(t, err)
+	visibleRoot, err := env.CM.CreatePublicChannel(context.TODO(), random.AlphaNumeric(20), hiddenRoot.ID, user.GetID())
+	require.NoError(t, err)
+	visibleChild, err := env.CM.CreatePublicChannel(context.TODO(), random.AlphaNumeric(20), visibleRoot.ID, user.GetID())
+	require.NoError(t, err)
 	commonSession := env.S(t, user.GetID())
 
 	t.Run("not logged in", func(t *testing.T) {
@@ -384,6 +390,22 @@ func TestHandlers_GetChannel(t *testing.T) {
 			Object()
 
 		channelEquals(t, channel, obj)
+	})
+
+	t.Run("success with inaccessible parent normalized as root", func(t *testing.T) {
+		t.Parallel()
+		e := env.R(t)
+		obj := e.GET(path, visibleRoot.ID.String()).
+			WithCookie(session.CookieName, commonSession).
+			Expect().
+			Status(http.StatusOK).
+			JSON().
+			Object()
+
+		expected := *visibleRoot
+		expected.ParentID = uuid.Nil
+		expected.ChildrenID = []uuid.UUID{visibleChild.ID}
+		channelEquals(t, &expected, obj)
 	})
 }
 
