@@ -241,6 +241,8 @@ func TestHandlers_CreateUser(t *testing.T) {
 		require.NoError(t, err)
 		_, err = env.CM.GetChannelFromPath(context.Background(), name+"/general/1")
 		require.NoError(t, err)
+		_, err = env.CM.GetChannelFromPath(context.Background(), name+"/general/2")
+		require.NoError(t, err)
 		lightsOut, err := env.CM.GetChannelFromPath(context.Background(), name+"/random")
 		require.NoError(t, err)
 		descendants := env.CM.AccessibleChannelTree(context.Background(), createdUser.GetID()).GetDescendantIDs(lightsOut.ID)

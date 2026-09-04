@@ -20,6 +20,9 @@ func TestLoadConfig(t *testing.T) {
 	if cfg.APIBaseURL != "https://q.trap.jp/api/v3" {
 		t.Errorf("APIBaseURL = %q", cfg.APIBaseURL)
 	}
+	if cfg.PublicOrigin != "https://q.trap.jp" {
+		t.Errorf("PublicOrigin = %q", cfg.PublicOrigin)
+	}
 }
 
 func TestLoadConfigRequiresSecrets(t *testing.T) {
@@ -35,6 +38,7 @@ func TestLoadConfigForAutoRegistration(t *testing.T) {
 
 	env := map[string]string{
 		"TRAQ_API_BASE_URL":      "http://backend/api/v3",
+		"TRAQ_PUBLIC_ORIGIN":     "http://localhost:3000/",
 		"TRAQ_BOT_AUTO_REGISTER": "true",
 		"TRAQ_BOT_ENDPOINT":      "http://bot-traq:8080/",
 		"TRAQ_DEV_USER_NAME":     "qbot_dev",
@@ -49,6 +53,9 @@ func TestLoadConfigForAutoRegistration(t *testing.T) {
 	}
 	if cfg.BotEndpoint != "http://bot-traq:8080" {
 		t.Errorf("BotEndpoint = %q", cfg.BotEndpoint)
+	}
+	if cfg.PublicOrigin != "http://localhost:3000" {
+		t.Errorf("PublicOrigin = %q", cfg.PublicOrigin)
 	}
 }
 

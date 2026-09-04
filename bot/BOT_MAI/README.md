@@ -2,6 +2,8 @@
 
 BOT謎で使用するHTTP BOT。表示名は「まい」。`BOT_MAI`へのメンションに続く2単語を4×4盤面上のナイト移動で解釈し、選ばれたコマンドをtraQ serverへ依頼して同じチャンネルへ結果を返す。
 
+新規アカウントの作成時には、そのユーザーの `#general/2` に「BOTコマンド仕様書」のPNG版とPDF版を添付投稿する。
+
 ## 現在の入力と応答
 
 入力はメンションの後に、有効な単語を2つ指定する。
@@ -55,6 +57,7 @@ traQのBOT設定では `MENTION_MESSAGE_CREATED` を購読する。現在のtraQ
 | 名前 | 必須 | 説明 | 例 |
 |---|---|---|---|
 | `TRAQ_API_BASE_URL` | 必須 | traQ API v3のベースURL。末尾を `/api/v3` にする | `http://localhost:3000/api/v3` |
+| `TRAQ_PUBLIC_ORIGIN` | 任意 | 投稿する添付URLの、ブラウザから到達できるtraQオリジン。未指定時はAPI URLから推測する | `http://localhost:3000` |
 | `TRAQ_BOT_ACCESS_TOKEN` | 通常起動時 | BOT詳細画面で発行されたAccess Token | — |
 | `TRAQ_BOT_VERIFICATION_TOKEN` | 通常起動時 | BOT詳細画面で発行されたVerification Token | — |
 | `TRAQ_BOT_AUTO_REGISTER` | 任意 | dev環境でBOTを自動発行・設定する。`true`の場合は手動トークンが不要 | `true` |

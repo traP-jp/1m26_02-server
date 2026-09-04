@@ -17,15 +17,17 @@ type messagePoster interface {
 }
 
 type traQClient struct {
-	baseURL     string
-	accessToken string
-	httpClient  *http.Client
+	baseURL      string
+	publicOrigin string
+	accessToken  string
+	httpClient   *http.Client
 }
 
 func newTraQClient(baseURL, accessToken string) *traQClient {
 	return &traQClient{
-		baseURL:     baseURL,
-		accessToken: accessToken,
+		baseURL:      baseURL,
+		publicOrigin: strings.TrimSuffix(baseURL, "/api/v3"),
+		accessToken:  accessToken,
 		httpClient: &http.Client{
 			Timeout: 3 * time.Second,
 		},

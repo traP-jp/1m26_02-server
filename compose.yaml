@@ -48,6 +48,7 @@ services:
     restart: always
     environment:
       TRAQ_API_BASE_URL: http://backend:3000/api/v3
+      TRAQ_PUBLIC_ORIGIN: http://localhost:3000
       TRAQ_BOT_AUTO_REGISTER: "true"
       TRAQ_BOT_ENDPOINT: http://bot-mai:8080
       TRAQ_DEV_USER_NAME: qbot_dev

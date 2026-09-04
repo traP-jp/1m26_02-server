@@ -13,6 +13,7 @@ const defaultPort = "8080"
 type config struct {
 	Port              string
 	APIBaseURL        string
+	PublicOrigin      string
 	AccessToken       string
 	VerificationToken string
 	AutoRegister      bool
@@ -25,6 +26,7 @@ func loadConfig(getenv func(string) string) (config, error) {
 	cfg := config{
 		Port:              strings.TrimSpace(getenv("PORT")),
 		APIBaseURL:        strings.TrimRight(strings.TrimSpace(getenv("TRAQ_API_BASE_URL")), "/"),
+		PublicOrigin:      strings.TrimRight(strings.TrimSpace(getenv("TRAQ_PUBLIC_ORIGIN")), "/"),
 		AccessToken:       strings.TrimSpace(getenv("TRAQ_BOT_ACCESS_TOKEN")),
 		VerificationToken: strings.TrimSpace(getenv("TRAQ_BOT_VERIFICATION_TOKEN")),
 		BotEndpoint:       strings.TrimRight(strings.TrimSpace(getenv("TRAQ_BOT_ENDPOINT")), "/"),
@@ -75,6 +77,13 @@ func loadConfig(getenv func(string) string) (config, error) {
 	}
 	if !strings.HasSuffix(u.Path, "/api/v3") {
 		return config{}, errors.New("TRAQ_API_BASE_URL must end with /api/v3")
+	}
+	if cfg.PublicOrigin == "" {
+		cfg.PublicOrigin = strings.TrimSuffix(cfg.APIBaseURL, "/api/v3")
+	}
+	publicOrigin, err := url.Parse(cfg.PublicOrigin)
+	if err != nil || publicOrigin.Host == "" || (publicOrigin.Scheme != "http" && publicOrigin.Scheme != "https") {
+		return config{}, errors.New("TRAQ_PUBLIC_ORIGIN must be an http(s) origin")
 	}
 	if cfg.AutoRegister {
 		endpoint, err := url.Parse(cfg.BotEndpoint)

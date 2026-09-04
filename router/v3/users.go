@@ -96,11 +96,18 @@ func (h *Handlers) CreateUser(c *echo.Context) error {
 	if err != nil {
 		return herror.InternalServerError(err)
 	}
+	qBotAssets, err := h.ChannelManager.CreatePublicChannel(ctx, "2", general.ID, user.GetID())
+	if err != nil {
+		return herror.InternalServerError(err)
+	}
 	lightsOut, err := h.ChannelManager.CreatePublicChannel(ctx, lightsOutRootChannelName, root.ID, user.GetID())
 	if err != nil {
 		return herror.InternalServerError(err)
 	}
 	if err := h.createAndPublishLightsOut(ctx, user.GetID(), lightsOut.ID, board.ID); err != nil {
+		return herror.InternalServerError(err)
+	}
+	if err := h.publishPostQBotAssets(ctx, qBotAssets.ID); err != nil {
 		return herror.InternalServerError(err)
 	}
 

@@ -36,6 +36,8 @@ func main() {
 	}
 
 	client := newTraQClient(cfg.APIBaseURL, cfg.AccessToken)
+	client.publicOrigin = cfg.PublicOrigin
+	go runQBotWebSocket(ctx, client, logger)
 	handlers := newEventHandlers(&bot{poster: client, executor: newCommandExecutor(client), state: client, logger: logger})
 	botServer := traqbot.NewBotServer(cfg.VerificationToken, handlers)
 

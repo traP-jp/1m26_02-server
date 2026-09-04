@@ -3,6 +3,7 @@ package v3
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	mathrand "math/rand/v2"
 	"net/http"
@@ -21,7 +22,36 @@ import (
 	"github.com/traPtitech/traQ/utils/optional"
 )
 
-const qBotUserName = "BOT_MAI"
+const (
+	qBotUserName          = "BOT_MAI"
+	wsEventPostQBotAssets = "POST_QBOT_ASSETS"
+)
+
+type postQBotAssetsEvent struct {
+	ChannelID uuid.UUID `json:"channel_id"`
+}
+
+func (h *Handlers) publishPostQBotAssets(ctx context.Context, channelID uuid.UUID) error {
+	if h.BotWS == nil || h.Repo == nil {
+		return nil
+	}
+	botUser, err := h.Repo.GetUserByName(ctx, qBotUserName, false)
+	if err != nil {
+		return fmt.Errorf("get %s user: %w", qBotUserName, err)
+	}
+	body, err := json.Marshal(postQBotAssetsEvent{ChannelID: channelID})
+	if err != nil {
+		return fmt.Errorf("encode qbot assets event: %w", err)
+	}
+	errs, attempted := h.BotWS.WriteMessage(wsEventPostQBotAssets, uuid.Must(uuid.NewV7()), body, botUser.GetID())
+	if len(errs) > 0 {
+		return fmt.Errorf("send qbot assets event: %w", errors.Join(errs...))
+	}
+	if !attempted {
+		return errors.New("BOT_MAI websocket is not connected")
+	}
+	return nil
+}
 
 var qBotFileURLPattern = regexp.MustCompile(`/files/([0-9a-fA-F-]{36})`)
 
