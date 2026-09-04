@@ -8,14 +8,11 @@ services:
       TRAQ_MARIADB_HOST: mysql
       TRAQ_ES_URL: http://es:9200
       TRAQ_PPROF: "true"
-      TRAQ_STORAGE_TYPE: composite
-      TRAQ_STORAGE_S3_BUCKET: traq
-      TRAQ_STORAGE_S3_REGION: ap-northeast-1
-      TRAQ_STORAGE_S3_ENDPOINT: http://s3:9000
-      TRAQ_STORAGE_S3_ACCESSKEY: ROOT
-      TRAQ_STORAGE_S3_SECRETKEY: PASSWORD
-      TRAQ_STORAGE_S3_CACHEDIR: ./storage
-      TRAQ_STORAGE_COMPOSITE_REMOTE: s3
+      # Browser-facing file URLs must stay on the backend origin in local
+      # development. An internal MinIO endpoint would produce redirects to a
+      # Docker-only hostname that the browser cannot resolve.
+      TRAQ_STORAGE_TYPE: local
+      TRAQ_STORAGE_LOCAL_DIR: ./storage
     entrypoint: ./traQ serve --dev
     expose:
       - "80"
