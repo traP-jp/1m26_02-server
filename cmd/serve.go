@@ -30,6 +30,7 @@ import (
 // serveCommand サーバー起動コマンド
 func serveCommand() *cobra.Command {
 	var skipInitEmojis bool
+	var repairImages bool
 
 	cmd := cobra.Command{
 		Use:   "serve",
@@ -181,6 +182,35 @@ func serveCommand() *cobra.Command {
 				logger.Fatal("failed to check BOT_traq", zap.Error(err))
 			}
 
+			// Ephemeral file storage can be empty after a redeploy while the database
+			// still points at files from the previous container. Recreate the bundled
+			// emoji images and deterministic user icons when explicitly requested.
+			if repairImages && !init {
+				logger.Info("repairing stored images...")
+				if !skipInitEmojis {
+					if err := twemoji.Install(repo, server.SS.FileManager, logger, true); err != nil {
+						logger.Fatal("failed to repair unicode emojis", zap.Error(err))
+					}
+				}
+
+				users, err := repo.GetUsers(context.Background(), repository.UsersQuery{})
+				if err != nil {
+					logger.Fatal("failed to list users for icon repair", zap.Error(err))
+				}
+				for _, user := range users {
+					iconFileID, err := file.GenerateIconFile(context.Background(), server.SS.FileManager, user.GetName())
+					if err != nil {
+						logger.Fatal("failed to regenerate user icon", zap.String("user", user.GetName()), zap.Error(err))
+					}
+					if err := repo.UpdateUser(context.Background(), user.GetID(), repository.UpdateUserArgs{
+						IconFileID: optional.From(iconFileID),
+					}); err != nil {
+						logger.Fatal("failed to update regenerated user icon", zap.String("user", user.GetName()), zap.Error(err))
+					}
+				}
+				logger.Info("stored images were repaired", zap.Int("user_icons", len(users)))
+			}
+
 			serveCtx, serveCancel := context.WithCancel(context.Background())
 			server.routerCancel = serveCancel
 			server.routerStopped = make(chan struct{})
@@ -205,6 +235,7 @@ func serveCommand() *cobra.Command {
 
 	flags := cmd.Flags()
 	flags.BoolVar(&skipInitEmojis, "skip-init-emojis", false, "skip initializing Unicode Emoji stamps")
+	flags.BoolVar(&repairImages, "repair-images", false, "recreate Unicode Emoji and user icon files referenced by an existing database")
 
 	return &cmd
 }
