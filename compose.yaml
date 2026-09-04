@@ -44,7 +44,7 @@ services:
 
   bot-traq:
     build:
-      context: ./bot/BOT_traq
+      context: ./bot/BOT_AI
     restart: always
     environment:
       TRAQ_API_BASE_URL: http://backend:3000/api/v3

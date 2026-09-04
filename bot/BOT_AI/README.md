@@ -79,7 +79,7 @@ serverと同じGitHubリポジトリから、BOT用のApplicationを別に作成
 |---|---|
 | Deploy Type | `Runtime` |
 | Build Type | `Dockerfile` |
-| Context | `bot/BOT_traq` |
+| Context | `bot/BOT_AI` |
 | Dockerfile | `Dockerfile` |
 | Entrypoint | 空欄 |
 | Command | 空欄 |

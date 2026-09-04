@@ -1,4 +1,4 @@
-module github.com/traP-jp/1m26_02-server/bot/BOT_traq
+module github.com/traP-jp/1m26_02-server/bot/BOT_AI
 
 go 1.26
 

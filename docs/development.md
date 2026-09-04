@@ -28,7 +28,7 @@ Now you can access to
     + database: `traq`
 + `http://localhost:3003/healthz` for the q_bot health check
 
-`make up` also builds and starts `bot/BOT_traq`. In the development Compose environment, the bot account, tokens, `MENTION_MESSAGE_CREATED` subscription, and activation are configured automatically; an external tunnel is not required. See [`bot/BOT_traq/README.md`](../bot/BOT_traq/README.md) for details.
+`make up` also builds and starts `bot/BOT_AI`. In the development Compose environment, the bot account, tokens, `MENTION_MESSAGE_CREATED` subscription, and activation are configured automatically; an external tunnel is not required. See [`bot/BOT_AI/README.md`](../bot/BOT_AI/README.md) for details.
 
 #### Rebuild traQ
 `make up`
