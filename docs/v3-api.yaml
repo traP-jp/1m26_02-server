@@ -43,7 +43,7 @@ paths:
   "/qbot/commands":
     post:
       summary: BOT謎のコマンドを実行
-      description: BOTが解釈したCOMMANDとTARGETを実行します。BOT_traqアカウント専用です。
+      description: BOTが解釈したCOMMANDとTARGETを実行します。BOT_MAIアカウント専用です。
       operationId: executeQBotCommand
       tags:
         - qbot

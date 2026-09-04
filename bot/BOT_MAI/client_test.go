@@ -84,3 +84,25 @@ func TestTraQClientExecuteQBotCommand(t *testing.T) {
 		t.Fatalf("result = %#v", result)
 	}
 }
+
+func TestTraQClientGetQBotStateForUser(t *testing.T) {
+	t.Parallel()
+	client := newTraQClient("https://q.example.com/api/v3", "access-token")
+	client.httpClient = &http.Client{Transport: roundTripFunc(func(r *http.Request) (*http.Response, error) {
+		if r.Method != http.MethodGet || r.URL.Path != "/api/v3/qbot/state" {
+			t.Fatalf("request = %s %s", r.Method, r.URL.Path)
+		}
+		if got := r.URL.Query().Get("userId"); got != "user-id" {
+			t.Fatalf("userId = %q, want user-id", got)
+		}
+		return testResponse(http.StatusOK, `{"cleared":true}`), nil
+	})}
+
+	state, err := client.GetQBotState(context.Background(), "user-id")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !state.Cleared {
+		t.Fatal("Cleared = false, want true")
+	}
+}

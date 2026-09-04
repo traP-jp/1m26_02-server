@@ -21,7 +21,7 @@ import (
 	"github.com/traPtitech/traQ/utils/optional"
 )
 
-const qBotUserName = "BOT_traq"
+const qBotUserName = "BOT_MAI"
 
 var qBotFileURLPattern = regexp.MustCompile(`/files/([0-9a-fA-F-]{36})`)
 
@@ -57,7 +57,18 @@ type qBotAttachment struct {
 }
 
 func (h *Handlers) GetMyQBotState(c *echo.Context) error {
-	state, err := h.qBotStateResponse(c.Request().Context(), getRequestUserID(c))
+	userID := getRequestUserID(c)
+	if requestedUserID := c.QueryParam("userId"); requestedUserID != "" {
+		if getRequestUser(c).GetName() != qBotUserName {
+			return herror.Forbidden("only BOT_MAI may inspect another user's puzzle state")
+		}
+		parsedUserID, err := uuid.FromString(requestedUserID)
+		if err != nil {
+			return herror.BadRequest("invalid userId")
+		}
+		userID = parsedUserID
+	}
+	state, err := h.qBotStateResponse(c.Request().Context(), userID)
 	if err != nil {
 		return herror.InternalServerError(err)
 	}
@@ -67,7 +78,7 @@ func (h *Handlers) GetMyQBotState(c *echo.Context) error {
 func (h *Handlers) ExecuteQBotCommand(c *echo.Context) error {
 	ctx := c.Request().Context()
 	if getRequestUser(c).GetName() != qBotUserName {
-		return herror.Forbidden("only BOT_traq may execute puzzle commands")
+		return herror.Forbidden("only BOT_MAI may execute puzzle commands")
 	}
 
 	var req qBotCommandRequest

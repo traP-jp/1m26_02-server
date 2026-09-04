@@ -100,7 +100,7 @@ func TestInterpret(t *testing.T) {
 func TestInterpretMessage(t *testing.T) {
 	t.Parallel()
 
-	got, err := interpretMessage("@BOT_traq file message")
+	got, err := interpretMessage("@BOT_MAI file message")
 	if err != nil {
 		t.Fatalf("interpretMessage() error = %v", err)
 	}
@@ -108,10 +108,10 @@ func TestInterpretMessage(t *testing.T) {
 		t.Errorf("interpretations = %v, want %v", got, want)
 	}
 
-	if _, err := interpretMessage("@BOT_traq file"); !errors.Is(err, errInvalidArgumentCount) {
+	if _, err := interpretMessage("@BOT_MAI file"); !errors.Is(err, errInvalidArgumentCount) {
 		t.Errorf("error = %v, want errInvalidArgumentCount", err)
 	}
-	if _, err := interpretMessage("@BOT_traq file message extra"); !errors.Is(err, errInvalidArgumentCount) {
+	if _, err := interpretMessage("@BOT_MAI file message extra"); !errors.Is(err, errInvalidArgumentCount) {
 		t.Errorf("error = %v, want errInvalidArgumentCount", err)
 	}
 }

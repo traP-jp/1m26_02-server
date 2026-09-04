@@ -6,7 +6,7 @@ import (
 	"strings"
 )
 
-const botMention = "@BOT_traq"
+const botMention = "@BOT_MAI"
 
 var (
 	errInvalidArgumentCount = errors.New("exactly two arguments are required")
@@ -49,6 +49,14 @@ var knightMoves = [...]boardPosition{
 }
 
 func interpretMessage(plainText string) ([]string, error) {
+	arguments := messageArguments(plainText)
+	if len(arguments) != 2 {
+		return nil, errInvalidArgumentCount
+	}
+	return interpret(arguments[0], arguments[1])
+}
+
+func messageArguments(plainText string) []string {
 	arguments := make([]string, 0, 2)
 	for _, field := range strings.Fields(plainText) {
 		if strings.EqualFold(field, botMention) {
@@ -56,10 +64,7 @@ func interpretMessage(plainText string) ([]string, error) {
 		}
 		arguments = append(arguments, field)
 	}
-	if len(arguments) != 2 {
-		return nil, errInvalidArgumentCount
-	}
-	return interpret(arguments[0], arguments[1])
+	return arguments
 }
 
 func interpret(firstWord, secondWord string) ([]string, error) {

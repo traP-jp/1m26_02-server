@@ -1,28 +1,30 @@
-# BOT_traq
+# BOT_MAI
 
-BOT謎で使用するHTTP BOT。`BOT_traq`へのメンションに続く2単語を4×4盤面上のナイト移動で解釈し、選ばれたコマンドをtraQ serverへ依頼して同じチャンネルへ結果を返す。
+BOT謎で使用するHTTP BOT。表示名は「まい」。`BOT_MAI`へのメンションに続く2単語を4×4盤面上のナイト移動で解釈し、選ばれたコマンドをtraQ serverへ依頼して同じチャンネルへ結果を返す。
 
 ## 現在の入力と応答
 
 入力はメンションの後に、有効な単語を2つ指定する。
 
 ```text
-@BOT_traq <1語目> <2語目>
+@BOT_MAI <1語目> <2語目>
 ```
 
 1語目のナイト移動先にあるCOMMANDと、2語目のナイト移動先にあるTARGETの直積を解釈候補とする。候補が複数ならランダムに1件を実行する。ただし `reset BOT` は唯一の候補になった場合だけ選ぶ。
 
 ```text
-@BOT_traq file message
+@BOT_MAI file message
 ```
 
 この入力は `reset BOT` だけに解釈できるため、BOTを復旧してゲームをクリアする。複数候補になる入力では、実際に選ばれた1件の結果だけを返す。
 
 ```text
-@BOT_traq BOT count
+@BOT_MAI BOT count
 ```
 
 引数が2つでない、盤面に存在しない単語がある、または有効な移動先がない場合は構文エラーを返す。盤面と全移動候補は [`docs/q_bot.md`](../../../docs/q_bot.md) を参照する。
+
+`reset BOT`でBOTを復旧した後は、そのユーザーの入力に限りナイト移動による変換を行わず、指定されたコマンドと対象をそのまま実行する。復旧状態はユーザーごとに保存される。
 
 ## コマンド実装の構成
 
@@ -74,7 +76,7 @@ make up
 Compose内ではBOTを `bot-traq` サービスとして起動する。BOTはtraQ APIの準備完了を待ち、次を自動で行う。
 
 1. dev専用ユーザー `qbot_dev` を作成または再利用してログインする。
-2. HTTP BOT `BOT_traq` を初回だけ発行し、再起動時は既存BOTを再利用する。
+2. HTTP BOT `BOT_MAI` を初回だけ発行し、再起動時は既存BOTを再利用する。
 3. 既存の購読イベントを残したまま `MENTION_MESSAGE_CREATED` を追加する。
 4. 発行済みのAccess TokenとVerification Tokenを取得してBOTサーバーを起動する。
 5. BOTを有効化する。
@@ -87,7 +89,7 @@ traQ backendからBOTへはCompose内の `http://bot-traq:8080` で接続する�
 curl -i http://localhost:3003/healthz
 ```
 
-`204 No Content` が返れば起動している。traQ上で `@BOT_traq file message` を投稿し、「BOTの復旧が完了しました。」と返ってクライアントにも復旧通知が出ることを確認する。
+`204 No Content` が返れば起動している。traQ上で `@BOT_MAI file message` を投稿し、「BOTの復旧が完了しました。」と返ってクライアントにも復旧通知が出ることを確認する。
 
 自動登録の進行状況は次で確認できる。
 
@@ -119,7 +121,7 @@ serverと同じGitHubリポジトリから、BOT用のApplicationを別に作成
 |---|---|
 | Deploy Type | `Runtime` |
 | Build Type | `Dockerfile` |
-| Context | `bot/BOT_traq` |
+| Context | `bot/BOT_MAI` |
 | Dockerfile | `Dockerfile` |
 | Entrypoint | 空欄 |
 | Command | 空欄 |

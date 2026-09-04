@@ -37,6 +37,10 @@ type commandResult struct {
 	SendContent string `json:"sendContent"`
 }
 
+type qBotState struct {
+	Cleared bool `json:"cleared"`
+}
+
 func (t targetName) valid() bool {
 	switch t {
 	case targetBOT, targetMessage, targetUser, targetChannel, targetStamp, targetFile, targetImage:

@@ -100,3 +100,26 @@ func (c *traQClient) ExecuteQBotCommand(ctx context.Context, request commandRequ
 	}
 	return result, nil
 }
+
+func (c *traQClient) GetQBotState(ctx context.Context, userID string) (qBotState, error) {
+	endpoint := c.baseURL + "/qbot/state?userId=" + url.QueryEscape(userID)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return qBotState{}, fmt.Errorf("create q_bot state request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.accessToken)
+	res, err := c.httpClient.Do(req)
+	if err != nil {
+		return qBotState{}, fmt.Errorf("get q_bot state: %w", err)
+	}
+	defer res.Body.Close()
+	if res.StatusCode != http.StatusOK {
+		responseBody, _ := io.ReadAll(io.LimitReader(res.Body, 2048))
+		return qBotState{}, fmt.Errorf("get q_bot state: status=%d body=%q", res.StatusCode, string(responseBody))
+	}
+	var state qBotState
+	if err := json.NewDecoder(res.Body).Decode(&state); err != nil {
+		return qBotState{}, fmt.Errorf("decode q_bot state: %w", err)
+	}
+	return state, nil
+}

@@ -16,9 +16,9 @@ import (
 )
 
 const (
-	devBotName        = "traq"
+	devBotName        = "MAI"
 	devBotUserName    = "BOT_" + devBotName
-	devBotDisplayName = "q_bot"
+	devBotDisplayName = "まい"
 	devBotDescription = "q_bot development bot"
 	mentionEvent      = "MENTION_MESSAGE_CREATED"
 )

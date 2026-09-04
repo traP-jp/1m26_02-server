@@ -14,7 +14,12 @@ import (
 type bot struct {
 	poster   messagePoster
 	executor *commandExecutor
+	state    qBotStateReader
 	logger   *log.Logger
+}
+
+type qBotStateReader interface {
+	GetQBotState(context.Context, string) (qBotState, error)
 }
 
 func newEventHandlers(b *bot) traqbot.EventHandlers {
@@ -30,14 +35,34 @@ func (b *bot) handleMention(payload *traqbot.MessageCreatedPayload) {
 	ctx, cancel := context.WithTimeout(context.Background(), 15*time.Second)
 	defer cancel()
 
-	interpretations, err := interpretMessage(payload.Message.PlainText)
-	if err != nil {
-		if postErr := b.poster.PostMessage(ctx, payload.Message.ChannelID, interpretationErrorReply(err)); postErr != nil {
+	cleared := false
+	if b.state != nil {
+		state, err := b.state.GetQBotState(ctx, payload.Message.User.ID)
+		if err != nil {
+			b.logger.Printf("failed to get q_bot state for user %s: %v", payload.Message.User.ID, err)
+			_ = b.poster.PostMessage(ctx, payload.Message.ChannelID, "処理中にエラーが発生しました。")
+			return
+		}
+		cleared = state.Cleared
+	}
+	arguments := messageArguments(payload.Message.PlainText)
+	if len(arguments) != 2 {
+		if postErr := b.poster.PostMessage(ctx, payload.Message.ChannelID, interpretationErrorReply(errInvalidArgumentCount)); postErr != nil {
 			b.logger.Printf("failed to reply to mention message %s: %v", payload.Message.ID, postErr)
 		}
 		return
 	}
-	selected := selectInterpretation(interpretations)
+	selected := strings.Join(arguments, " ")
+	if !cleared {
+		interpretations, err := interpret(arguments[0], arguments[1])
+		if err != nil {
+			if postErr := b.poster.PostMessage(ctx, payload.Message.ChannelID, interpretationErrorReply(err)); postErr != nil {
+				b.logger.Printf("failed to reply to mention message %s: %v", payload.Message.ID, postErr)
+			}
+			return
+		}
+		selected = selectInterpretation(interpretations)
+	}
 	parts := strings.SplitN(selected, " ", 2)
 	result, err := b.executor.execute(ctx, commandRequest{Command: commandName(parts[0]), Target: targetName(parts[1]), Message: payload.Message})
 	if err != nil {
@@ -60,10 +85,10 @@ func (b *bot) handleMention(payload *traqbot.MessageCreatedPayload) {
 
 func interpretationErrorReply(err error) string {
 	if errors.Is(err, errInvalidArgumentCount) {
-		return "引数を2つ指定してください。例: @BOT_traq file message"
+		return "引数を2つ指定してください。例: @BOT_MAI reset BOT"
 	}
 	if errors.Is(err, errNoInterpretation) {
-		return "構文エラー: ナイト移動後に有効な解釈がありません。"
+		return "構文エラー"
 	}
 	return "構文エラー: " + err.Error()
 }

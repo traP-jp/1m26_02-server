@@ -15,7 +15,7 @@ import (
 )
 
 func main() {
-	logger := log.New(os.Stdout, "BOT_traq: ", log.LstdFlags|log.LUTC)
+	logger := log.New(os.Stdout, "BOT_MAI: ", log.LstdFlags|log.LUTC)
 	cfg, err := loadConfig(os.Getenv)
 	if err != nil {
 		logger.Fatal(err)
@@ -36,7 +36,7 @@ func main() {
 	}
 
 	client := newTraQClient(cfg.APIBaseURL, cfg.AccessToken)
-	handlers := newEventHandlers(&bot{poster: client, executor: newCommandExecutor(client), logger: logger})
+	handlers := newEventHandlers(&bot{poster: client, executor: newCommandExecutor(client), state: client, logger: logger})
 	botServer := traqbot.NewBotServer(cfg.VerificationToken, handlers)
 
 	mux := http.NewServeMux()

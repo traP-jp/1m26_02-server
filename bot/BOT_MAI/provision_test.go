@@ -96,7 +96,7 @@ func TestDevProvisionerReusesBotAndPreservesSubscriptions(t *testing.T) {
 			res.Header.Add("Set-Cookie", "r_session=session; Path=/; HttpOnly")
 			return res, nil
 		case "GET /api/v3/users":
-			return testResponse(http.StatusOK, `[{"id":"bot-user-id","name":"BOT_traq"}]`), nil
+			return testResponse(http.StatusOK, `[{"id":"bot-user-id","name":"BOT_MAI"}]`), nil
 		case "GET /api/v3/bots":
 			return testResponse(http.StatusOK, `[{"id":"bot-id","botUserId":"bot-user-id","subscribeEvents":["MESSAGE_CREATED"]}]`), nil
 		case "PATCH /api/v3/bots/bot-id":
