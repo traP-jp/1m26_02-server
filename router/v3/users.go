@@ -193,6 +193,11 @@ func (h *Handlers) CreateUser(c *echo.Context) error {
 	if err != nil {
 		return herror.InternalServerError(err)
 	}
+	if err := h.ChannelManager.ChangeChannelSubscriptions(ctx, general.ID, map[uuid.UUID]model.ChannelSubscribeLevel{
+		user.GetID(): model.ChannelSubscribeLevelMarkAndNotify,
+	}, false, user.GetID()); err != nil {
+		return herror.InternalServerError(err)
+	}
 	board, err := h.ChannelManager.CreatePublicChannel(ctx, lightsOutBoardChildName, general.ID, user.GetID())
 	if err != nil {
 		return herror.InternalServerError(err)
