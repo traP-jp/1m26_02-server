@@ -38,6 +38,9 @@ func TestDevProvisionerCreatesAndActivatesBot(t *testing.T) {
 			if body["endpoint"] != "http://bot-traq:8080" {
 				t.Errorf("endpoint = %q", body["endpoint"])
 			}
+			if body["displayName"] != devBotDisplayName {
+				t.Errorf("displayName = %q", body["displayName"])
+			}
 			return testResponse(http.StatusCreated, `{
                     "id":"bot-id",
                     "botUserId":"bot-user-id",
@@ -47,6 +50,7 @@ func TestDevProvisionerCreatesAndActivatesBot(t *testing.T) {
 		case "PATCH /api/v3/bots/bot-id":
 			requireSessionCookie(t, r)
 			var body struct {
+				DisplayName     string   `json:"displayName"`
 				Endpoint        string   `json:"endpoint"`
 				SubscribeEvents []string `json:"subscribeEvents"`
 			}
@@ -56,6 +60,9 @@ func TestDevProvisionerCreatesAndActivatesBot(t *testing.T) {
 			subscribed = body.SubscribeEvents
 			if body.Endpoint != "http://bot-traq:8080" {
 				t.Errorf("endpoint = %q", body.Endpoint)
+			}
+			if body.DisplayName != devBotDisplayName {
+				t.Errorf("displayName = %q", body.DisplayName)
 			}
 			return testResponse(http.StatusNoContent, ""), nil
 		case "POST /api/v3/bots/bot-id/actions/activate":
@@ -101,6 +108,7 @@ func TestDevProvisionerReusesBotAndPreservesSubscriptions(t *testing.T) {
 			return testResponse(http.StatusOK, `[{"id":"bot-id","botUserId":"bot-user-id","subscribeEvents":["MESSAGE_CREATED"]}]`), nil
 		case "PATCH /api/v3/bots/bot-id":
 			var body struct {
+				DisplayName     string   `json:"displayName"`
 				Endpoint        string   `json:"endpoint"`
 				SubscribeEvents []string `json:"subscribeEvents"`
 			}
@@ -111,6 +119,9 @@ func TestDevProvisionerReusesBotAndPreservesSubscriptions(t *testing.T) {
 			if body.Endpoint != "http://bot-traq:8080" {
 				t.Errorf("endpoint = %q", body.Endpoint)
 			}
+			if body.DisplayName != devBotDisplayName {
+				t.Errorf("displayName = %q", body.DisplayName)
+			}
 			return testResponse(http.StatusNoContent, ""), nil
 		case "GET /api/v3/bots/bot-id":
 			if r.URL.Query().Get("detail") != "true" {
@@ -119,6 +130,7 @@ func TestDevProvisionerReusesBotAndPreservesSubscriptions(t *testing.T) {
 			return testResponse(http.StatusOK, `{
                     "id":"bot-id",
                     "botUserId":"bot-user-id",
+					"displayName":"まい",
                     "endpoint":"https://old.example.com",
                     "subscribeEvents":["MESSAGE_CREATED"],
                     "tokens":{"accessToken":"existing-access","verificationToken":"existing-verification"}
