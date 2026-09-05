@@ -75,6 +75,9 @@ func (b *bot) handleMention(payload *traqbot.MessageCreatedPayload) {
 		return
 	}
 	if result.SendContent != "" {
+		// Keep the progress reply observably ahead of the generated content even
+		// when two message events are delivered almost at the same time.
+		time.Sleep(100 * time.Millisecond)
 		if err := b.poster.PostMessage(ctx, payload.Message.ChannelID, result.SendContent); err != nil {
 			b.logger.Printf("failed to send command result for message %s: %v", payload.Message.ID, err)
 			return

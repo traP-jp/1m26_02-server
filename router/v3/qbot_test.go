@@ -5,6 +5,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/gofrs/uuid"
+
 	"github.com/traPtitech/traQ/model"
 )
 
@@ -46,6 +48,33 @@ func TestQBotFormatting(t *testing.T) {
 	}
 	if got := qBotOneLine("  one\n two   three  ", 7); got != "one two…" {
 		t.Errorf("qBotOneLine() = %q", got)
+	}
+	if got := qBotPathWithinUserRoot("alice/general/2", "alice"); got != "general/2" {
+		t.Errorf("qBotPathWithinUserRoot() = %q", got)
+	}
+	channelID := uuid.Must(uuid.FromString("01a06ce5-834e-7e96-a3a7-af9c14580f32"))
+	if got := qBotChannelEmbed("#general", channelID); got != `!{"type":"channel","raw":"#general","id":"01a06ce5-834e-7e96-a3a7-af9c14580f32"}` {
+		t.Errorf("qBotChannelEmbed() = %q", got)
+	}
+}
+
+func TestQBotChannelsUnderRootExcludesRootAndArchivedChannels(t *testing.T) {
+	rootID := uuid.Must(uuid.NewV7())
+	generalID := uuid.Must(uuid.NewV7())
+	channels := []*model.Channel{
+		{ID: rootID, Name: "alice", IsVisible: true},
+		{ID: generalID, ParentID: rootID, Name: "general", IsVisible: true},
+		{ID: uuid.Must(uuid.NewV7()), ParentID: generalID, Name: "1", IsVisible: true},
+		{ID: uuid.Must(uuid.NewV7()), ParentID: rootID, Name: "archived", IsVisible: false},
+		{ID: uuid.Must(uuid.NewV7()), Name: "someone-else", IsVisible: true},
+	}
+
+	got := qBotChannelsUnderRoot(channels, "alice")
+	if len(got) != 2 {
+		t.Fatalf("qBotChannelsUnderRoot() returned %d channels, want 2", len(got))
+	}
+	if got[0].path != "general" || got[1].path != "general/1" {
+		t.Fatalf("paths = [%q, %q], want [general, general/1]", got[0].path, got[1].path)
 	}
 }
 

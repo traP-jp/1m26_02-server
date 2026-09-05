@@ -200,16 +200,14 @@ func (h *Handlers) executeQBotCount(ctx context.Context, req qBotCommandRequest)
 				count++
 			}
 		}
-	case "message", "user":
+	case "user":
+		count = 1
+	case "message":
 		stats, err := h.Repo.GetChannelStats(ctx, req.ChannelID, true)
 		if err != nil {
 			return qBotCommandResponse{}, err
 		}
-		if req.Target == "message" {
-			count = stats.TotalMessageCount
-		} else {
-			count = int64(len(stats.Users))
-		}
+		count = stats.TotalMessageCount
 	case "channel":
 		player, err := h.Repo.GetUser(ctx, req.UserID, false)
 		if err != nil {
@@ -246,7 +244,7 @@ func (h *Handlers) executeQBotList(ctx context.Context, req qBotCommandRequest) 
 		if err != nil {
 			return qBotCommandResponse{}, err
 		}
-		lines = append(lines, "| 名前 | ID | 説明 |", "|---|---|---|")
+		lines = append(lines, "| 名前 | ID |", "|---|---|")
 		for _, bot := range bots[:min(len(bots), limit)] {
 			found = true
 			user, _ := h.Repo.GetUser(ctx, bot.BotUserID, false)
@@ -254,16 +252,25 @@ func (h *Handlers) executeQBotList(ctx context.Context, req qBotCommandRequest) 
 			if user != nil {
 				name = user.GetName()
 			}
-			lines = append(lines, fmt.Sprintf("| %s | `%s` | %s |", qBotCell(name), bot.ID, qBotCell(bot.Description)))
+			lines = append(lines, fmt.Sprintf("| %s | `%s` |", qBotCell(name), bot.ID))
 		}
 	case "message":
-		messages, _, err := h.Repo.GetMessages(ctx, repository.MessagesQuery{Channel: req.ChannelID, Limit: 3})
+		messages, _, err := h.Repo.GetMessages(ctx, repository.MessagesQuery{Channel: req.ChannelID, Limit: 4})
 		if err != nil {
 			return qBotCommandResponse{}, err
 		}
 		for _, message := range messages {
+			if message.ID == req.MessageID {
+				continue
+			}
 			found = true
-			lines = append(lines, fmt.Sprintf("- %s — %s", message.CreatedAt.Format(time.DateTime), qBotOneLine(message.Text, 100)))
+			lines = append(lines, "/messages/"+message.ID.String())
+			if len(lines) == 4 {
+				break
+			}
+		}
+		if found {
+			return qBotCommandResponse{Reply: strings.Join(lines[1:], "\n")}, nil
 		}
 	case "user":
 		user, err := h.Repo.GetUser(ctx, req.UserID, true)
@@ -284,7 +291,7 @@ func (h *Handlers) executeQBotList(ctx context.Context, req qBotCommandRequest) 
 		lines = append(lines, "| パス | トピック |", "|---|---|")
 		for _, channel := range channels[:min(len(channels), limit)] {
 			found = true
-			lines = append(lines, fmt.Sprintf("| #%s | %s |", qBotCell(channel.path), qBotCell(channel.channel.Topic)))
+			lines = append(lines, fmt.Sprintf("| %s | %s |", qBotChannelEmbed("#"+channel.path, channel.channel.ID), qBotCell(channel.channel.Topic)))
 		}
 	case "stamp":
 		entity, err := h.Repo.GetAllStampsWithThumbnail(ctx, repository.StampTypeAll)
@@ -328,6 +335,10 @@ func (h *Handlers) qBotChannelsForUser(ctx context.Context, name string) ([]qBot
 	if err != nil {
 		return nil, err
 	}
+	return qBotChannelsUnderRoot(channels, name), nil
+}
+
+func qBotChannelsUnderRoot(channels []*model.Channel, name string) []qBotChannelPath {
 	byID := make(map[uuid.UUID]*model.Channel, len(channels))
 	for _, channel := range channels {
 		byID[channel.ID] = channel
@@ -340,14 +351,15 @@ func (h *Handlers) qBotChannelsForUser(ctx context.Context, name string) ([]qBot
 		return channel.Name
 	}
 	result := make([]qBotChannelPath, 0)
+	rootPrefix := name + "/"
 	for _, channel := range channels {
 		path := pathOf(channel)
-		if path == name || strings.HasPrefix(path, name+"/") {
-			result = append(result, qBotChannelPath{channel: channel, path: path})
+		if !channel.IsArchived() && strings.HasPrefix(path, rootPrefix) {
+			result = append(result, qBotChannelPath{channel: channel, path: strings.TrimPrefix(path, rootPrefix)})
 		}
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].path < result[j].path })
-	return result, nil
+	return result
 }
 
 func (h *Handlers) executeQBotOpen(ctx context.Context, req qBotCommandRequest) (qBotCommandResponse, error) {
@@ -398,11 +410,15 @@ func (h *Handlers) executeQBotSend(ctx context.Context, req qBotCommandRequest) 
 		}
 		content = "@" + user.GetName()
 	case "channel":
-		path, err := h.qBotChannelPath(ctx, req.ChannelID)
+		player, err := h.Repo.GetUser(ctx, req.UserID, false)
 		if err != nil {
 			return qBotCommandResponse{}, err
 		}
-		content = "/channels/" + path
+		general, err := h.ChannelManager.GetChannelFromPath(ctx, player.GetName()+"/general")
+		if err != nil {
+			return qBotCommandResponse{}, err
+		}
+		content = qBotChannelEmbed("#general", general.ID)
 	case "stamp":
 		entity, err := h.Repo.GetAllStampsWithThumbnail(ctx, repository.StampTypeAll)
 		if err != nil {
@@ -437,7 +453,7 @@ func (h *Handlers) executeQBotDelete(ctx context.Context, req qBotCommandRequest
 		return qBotCommandResponse{Reply: "削除が完了しました。"}, nil
 	case "stamp":
 		if len(invocation.Stamps) == 0 {
-			return qBotCommandResponse{Reply: "見つかりませんでした。"}, nil
+			return qBotCommandResponse{Reply: "権限がありません。"}, nil
 		}
 		stamp := invocation.Stamps[0]
 		if err := h.MessageManager.RemoveStamps(ctx, req.MessageID, stamp.StampID, stamp.UserID); err != nil {
@@ -509,6 +525,10 @@ func (h *Handlers) executeQBotDebug(ctx context.Context, req qBotCommandRequest,
 		}
 		data["id"], data["name"], data["bot"], data["state"], data["permission"] = user.GetID(), user.GetName(), user.IsBot(), user.GetState().Int(), user.GetRole()
 	case "channel":
+		player, err := h.Repo.GetUser(ctx, req.UserID, false)
+		if err != nil {
+			return qBotCommandResponse{}, err
+		}
 		channel, err := h.Repo.GetChannel(ctx, req.ChannelID)
 		if err != nil {
 			return qBotCommandResponse{}, err
@@ -517,7 +537,7 @@ func (h *Handlers) executeQBotDebug(ctx context.Context, req qBotCommandRequest,
 		if err != nil {
 			return qBotCommandResponse{}, err
 		}
-		data["id"], data["parentId"], data["name"], data["path"], data["visible"], data["canView"], data["canPost"] = channel.ID, channel.ParentID, channel.Name, path, channel.IsVisible, true, !channel.IsArchived()
+		data["id"], data["parentId"], data["name"], data["path"], data["visible"], data["canView"], data["canPost"] = channel.ID, channel.ParentID, channel.Name, qBotPathWithinUserRoot(path, player.GetName()), channel.IsVisible, true, !channel.IsArchived()
 	case "stamp":
 		entity, err := h.Repo.GetAllStampsWithThumbnail(ctx, repository.StampTypeAll)
 		if err != nil {
@@ -675,4 +695,12 @@ func qBotOneLine(value string, maxRunes int) string {
 		return string(runes[:maxRunes]) + "…"
 	}
 	return value
+}
+
+func qBotPathWithinUserRoot(path, userName string) string {
+	return strings.TrimPrefix(path, userName+"/")
+}
+
+func qBotChannelEmbed(raw string, channelID uuid.UUID) string {
+	return fmt.Sprintf(`!{"type":"channel","raw":"%s","id":"%s"}`, raw, channelID)
 }

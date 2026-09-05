@@ -1,6 +1,6 @@
 # BOT_AI
 
-BOT謎で使用する表示名「あい」のBOT。`BOT_AI` をメンションすると同じチャンネルへ「呼びましたか？」と投稿するほか、traQのユーザーWebSocketで `CREATE_LIGHTS_OUT` を受信すると `#general` に `#random` 配下のLights Out対応表を投稿し、操作用の全スタンプをBOT自身で付ける。
+BOT謎で使用する表示名「アイ」のBOT。`BOT_AI` をメンションすると同じチャンネルへ「呼びましたか？」と投稿するほか、traQのユーザーWebSocketで `CREATE_LIGHTS_OUT` を受信すると `#general` に `#random` 配下のLights Out対応表を投稿し、操作用の全スタンプをBOT自身で付ける。
 
 ## 使用ライブラリとイベント
 
@@ -34,7 +34,7 @@ make up
 Compose内ではBOTを `bot-ai` サービスとして起動する。BOTはtraQ APIの準備完了を待ち、次を自動で行う。
 
 1. dev専用ユーザー `qbot_dev` を作成または再利用してログインする。
-2. 表示名「あい」のHTTP BOT `BOT_AI` を初回だけ発行し、再起動時は既存BOTを再利用する。
+2. 表示名「アイ」のHTTP BOT `BOT_AI` を初回だけ発行し、再起動時は既存BOTを再利用する。
 3. 既存の購読イベントを残したまま `MENTION_MESSAGE_CREATED` を追加する。
 4. 発行済みのAccess TokenとVerification Tokenを取得してBOTサーバーを起動する。
 5. BOTを有効化する。

@@ -18,8 +18,8 @@ import (
 const (
 	devBotName        = "AI"
 	devBotUserName    = "BOT_" + devBotName
-	devBotDisplayName = "あい"
-	devBotDescription = "あい development bot"
+	devBotDisplayName = "アイ"
+	devBotDescription = "アイ development bot"
 	mentionEvent      = "MENTION_MESSAGE_CREATED"
 )
 
