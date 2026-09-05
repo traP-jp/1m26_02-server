@@ -35,13 +35,11 @@ func newTraQClient(baseURL, accessToken string) *traQClient {
 }
 
 func (c *traQClient) PostMessage(ctx context.Context, channelID, content string) error {
-	if strings.HasPrefix(content, "/") {
-		content = strings.TrimSuffix(c.baseURL, "/api/v3") + content
-	}
+	content = expandInternalLinks(content, c.publicOrigin)
 	body, err := json.Marshal(struct {
 		Content string `json:"content"`
 		Embed   bool   `json:"embed"`
-	}{Content: content, Embed: true})
+	}{Content: content, Embed: shouldEmbedContent(content)})
 	if err != nil {
 		return fmt.Errorf("encode request: %w", err)
 	}
@@ -65,6 +63,20 @@ func (c *traQClient) PostMessage(ctx context.Context, channelID, content string)
 		return fmt.Errorf("post message: status=%d body=%q", res.StatusCode, string(responseBody))
 	}
 	return nil
+}
+
+func shouldEmbedContent(content string) bool {
+	return !strings.Contains(content, "!{")
+}
+
+func expandInternalLinks(content, publicOrigin string) string {
+	lines := strings.Split(content, "\n")
+	for i, line := range lines {
+		if strings.HasPrefix(line, "/") {
+			lines[i] = strings.TrimSuffix(publicOrigin, "/") + line
+		}
+	}
+	return strings.Join(lines, "\n")
 }
 
 func (c *traQClient) ExecuteQBotCommand(ctx context.Context, request commandRequest) (commandResult, error) {
